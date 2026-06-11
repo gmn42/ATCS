@@ -1,0 +1,173 @@
+plugins {
+    id 'application'
+    id 'java'
+}
+
+group = 'com.gpl.rpg.atcontentstudio'
+version = file('res/ATCS_latest').text.trim()
+
+def mainClassNameValue = 'com.gpl.rpg.atcontentstudio.ATContentStudio'
+def appVersion = version.toString()
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+}
+
+application {
+    mainClass = mainClassNameValue
+}
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            setSrcDirs([
+                    'src',
+                    'hacked-libtiled',
+                    'minify',
+                    'siphash-zackehh/src/main/java'
+            ])
+        }
+        resources {
+            setSrcDirs([
+                    'res',
+                    'src'
+            ])
+            exclude '**/*.java'
+        }
+    }
+
+    test {
+        java {
+            setSrcDirs([
+
+            ])
+        }
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        failOnVersionConflict()
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'lib', include: ['*.jar'])
+
+    testImplementation fileTree(dir: 'lib', include: ['junit-*.jar'])
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    sourceCompatibility = '11'
+    targetCompatibility = '11'
+}
+
+tasks.withType(Jar).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.named('processResources') {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.named('jar', Jar) {
+    archiveBaseName = 'ATCS-thin'
+    manifest {
+        attributes(
+                'Main-Class': mainClassNameValue
+        )
+    }
+}
+
+tasks.register('fatJar', Jar) {
+    group = 'build'
+    description = 'Builds a runnable fat jar similar to the legacy packaging script.'
+
+    archiveBaseName = 'ATCS'
+    archiveVersion = ''
+    archiveClassifier = ''
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    manifest {
+        attributes(
+                'Manifest-Version': '1.0',
+                'Main-Class': mainClassNameValue
+        )
+    }
+
+    from sourceSets.main.output
+
+    dependsOn configurations.runtimeClasspath
+    from {
+        configurations.runtimeClasspath
+                .findAll { it.name.toLowerCase().endsWith('.jar') }
+                .collect { zipTree(it) }
+    }
+
+    from('src/com/gpl/rpg/atcontentstudio/img') {
+        into 'com/gpl/rpg/atcontentstudio/img'
+    }
+
+    from('hacked-libtiled/tiled/io/resources') {
+        into 'tiled/io/resources'
+    }
+
+    from('res/ATCS_latest')
+}
+
+def distCommonDirProvider = layout.buildDirectory.dir('dist/common')
+
+tasks.register('prepareDistCommon', Copy) {
+    group = 'distribution'
+    description = 'Prepares the common distribution directory.'
+
+    dependsOn tasks.named('fatJar')
+
+    into distCommonDirProvider
+
+    from(tasks.named('fatJar')) {
+        rename { 'ATCS.jar' }
+    }
+
+    from('packaging/common') {
+        include 'ATCS.sh', 'ATCS.cmd', 'ATCS.ico'
+    }
+
+    from('lib') {
+        include '*.jar'
+        into 'lib'
+    }
+}
+
+tasks.register('packageZip', Zip) {
+    group = 'distribution'
+    description = 'Builds a zip archive similar to packaging/package.sh.'
+
+    dependsOn tasks.named('prepareDistCommon')
+
+    archiveBaseName = 'ATCS'
+    archiveVersion = appVersion
+    archiveClassifier = ''
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+
+    from(distCommonDirProvider) {
+        into 'common'
+    }
+}
+
+tasks.named('assemble') {
+    dependsOn tasks.named('fatJar')
+}
+
+tasks.named('build') {
+    dependsOn tasks.named('packageZip')
+}
