@@ -42,6 +42,34 @@ LIBRARIES=(
   "ui.jar"
 )
 
+JPACKAGE_CMD=(bash "./jpackage.sh")
+JPACKAGE_NAME="ATCS"
+JPACKAGE_MAIN_CLASS="com.gpl.rpg.atcontentstudio.ATContentStudio"
+JPACKAGE_LINUX_ICON="./common/ATCS.png"
+JPACKAGE_WINDOWS_ICON="./common/ATCS.ico"
+
+run_jpackage() {
+    local TYPE_ARG="$1"
+    local OUT_DIR_ARG="$2"
+    local ICON_ARG="$3"
+
+    "${JPACKAGE_CMD[@]}" \
+        --type "$TYPE_ARG" \
+        --out "$OUT_DIR_ARG" \
+        --name "$JPACKAGE_NAME" \
+        --jar "./common/ATCS.jar" \
+        --main-class "$JPACKAGE_MAIN_CLASS" \
+        --icon "$ICON_ARG"
+}
+
+can_build_deb() {
+    command -v dpkg-deb >/dev/null 2>&1
+}
+
+can_build_rpm() {
+    command -v rpm >/dev/null 2>&1 && command -v rpmbuild >/dev/null 2>&1
+}
+
 # --- Get version ---
 echo "Getting version"
 VERSION=$(tr -d '[:space:]' < "${VERSION_FILE}")
@@ -109,18 +137,75 @@ cp -f "${JAR_LOCATION}" "${PACKAGING_DIR}/common/ATCS.jar" # Copy JAR to version
 
 # --- Create archive ---
 cd "${PACKAGING_DIR}" || exit
-echo "Creating archive"
+echo "Creating packages"
+
+# jpackage doesn't like 'v' in the version, so this gets a number without it.  Needs to be cleaned up.
+APP_VERSION_RAW=$(tr -d '[:space:]' < "${PACKAGING_DIR}/../res/ATCS_latest" 2>/dev/null || echo unknown)
+APP_VERSION="${APP_VERSION_RAW#v}"
+
 if [ "$PLATFORM" = "WINDOWS" ]; then
+    WINDOWS_ZIP_DIR="./dist/windows/zip"
+    WINDOWS_EXE_DIR="./dist/windows/exe"
+    WINDOWS_APP_IMAGE_DIR="./dist/windows/app-image"
+    WINDOWS_MSI_DIR="./dist/windows/msi"
+
+
     # Use PowerShell's Compress-Archive which is available by default on Windows
-    powershell.exe -Command "Compress-Archive -Path './common/*' -DestinationPath './ATCS_${VERSION}.zip' -Force"
+    echo "Creating Windows ZIP archive (jar version)"
+    powershell.exe -Command "Compress-Archive -Path './common/*' -DestinationPath './ATCS_${VERSION}-jar-only.zip' -Force"
+
+    # Build a Windows EXE installer with jpackage
+    echo "Creating Windows EXE installer"
+    if ! run_jpackage "exe" "${WINDOWS_EXE_DIR}" "${JPACKAGE_WINDOWS_ICON}"; then
+        echo "Package creation failed." >&2
+        exit 1
+    fi
+    cp "${WINDOWS_EXE_DIR}/ATCS-${APP_VERSION}.exe" "./ATCS_${VERSION}-installer.exe"
+
+    # Build a Windows MSI installer with jpackage
+    echo "Creating Windows MSI installer"
+    if ! run_jpackage "msi" "${WINDOWS_MSI_DIR}" "${JPACKAGE_WINDOWS_ICON}"; then
+        echo "Package creation failed." >&2
+        exit 1
+    fi
+    cp "${WINDOWS_MSI_DIR}/ATCS-${APP_VERSION}.msi" "./ATCS_${VERSION}-installer.msi"
+
+    # Build a Windows MSI installer with jpackage
+    echo "Windows portable zip archive"
+    if ! run_jpackage "app-image" "${WINDOWS_APP_IMAGE_DIR}" "${JPACKAGE_WINDOWS_ICON}"; then
+        echo "Package creation failed." >&2
+        exit 1
+    fi
+    powershell.exe -Command "Compress-Archive -Path '${WINDOWS_APP_IMAGE_DIR}/*' -DestinationPath './ATCS_${VERSION}-portable.zip' -Force"
+
 else
-    # Use zip command on Linux
-    zip -r "ATCS_${VERSION}.zip" common/* # archive the 'common' folder which now contains the JAR and libs
+    echo "Creating Linux app-image package with jpackage"
+    rm -rf "./dist/app-image"
+    if ! run_jpackage "app-image" "./dist/app-image" "${JPACKAGE_LINUX_ICON}"; then
+        echo "Package creation failed." >&2
+        exit 1
+    fi
+
+    if can_build_deb; then
+        echo "Creating Linux deb package with jpackage"
+        rm -rf "./dist/deb"
+        if ! run_jpackage "deb" "./dist/deb" "${JPACKAGE_LINUX_ICON}"; then
+            echo "Warning: deb package could not be created on this host." >&2
+        fi
+    else
+        echo "Warning: skipping deb package because dpkg-deb is not installed on this host." >&2
+    fi
+
+    if can_build_rpm; then
+        echo "Creating Linux rpm package with jpackage"
+        rm -rf "./dist/rpm"
+        if ! run_jpackage "rpm" "./dist/rpm" "${JPACKAGE_LINUX_ICON}"; then
+            echo "Warning: rpm package could not be created on this host." >&2
+        fi
+    else
+        echo "Warning: skipping rpm package because rpm/rpmbuild are not installed on this host." >&2
+    fi
 fi
-if [ $? -ne 0 ]; then
-    echo "Archive creation failed."
-    exit 1
-fi
-echo "Created archive at ${PACKAGING_DIR}/ATCS_${VERSION}.zip"
+echo "Created packages under ${PACKAGING_DIR}/dist"
 
 echo "Script finished."
