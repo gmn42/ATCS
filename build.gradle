@@ -11,13 +11,13 @@ def appVersion = version.toString()
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion.set(JavaLanguageVersion.of(25))
     }
     withSourcesJar()
 }
 
 application {
-    mainClass = mainClassNameValue
+    mainClass.set(mainClassNameValue)
 }
 
 repositories {
@@ -66,8 +66,7 @@ dependencies {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    sourceCompatibility = '11'
-    targetCompatibility = '11'
+    options.release = 17
 }
 
 tasks.withType(Jar).configureEach {
@@ -79,11 +78,9 @@ tasks.named('processResources') {
 }
 
 tasks.named('jar', Jar) {
-    archiveBaseName = 'ATCS-thin'
+    archiveBaseName.set('ATCS-thin')
     manifest {
-        attributes(
-                'Main-Class': mainClassNameValue
-        )
+        attributes('Main-Class': mainClassNameValue)
     }
 }
 
@@ -91,9 +88,10 @@ tasks.register('fatJar', Jar) {
     group = 'build'
     description = 'Builds a runnable fat jar similar to the legacy packaging script.'
 
-    archiveBaseName = 'ATCS'
-    archiveVersion = ''
-    archiveClassifier = ''
+    // use provider-style API to avoid deprecation warnings on Gradle 9.x
+    archiveBaseName.set('ATCS')
+    archiveVersion.set('')
+    archiveClassifier.set('')
 
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
@@ -153,10 +151,10 @@ tasks.register('packageZip', Zip) {
     description = 'Builds a zip archive similar to packaging/package.sh.'
 
     dependsOn tasks.named('prepareDistCommon')
-
-    archiveBaseName = 'ATCS'
-    archiveVersion = appVersion
-    archiveClassifier = ''
+    // use provider-style archive properties
+    archiveBaseName.set('ATCS')
+    archiveVersion.set(appVersion)
+    archiveClassifier.set('')
     destinationDirectory = layout.buildDirectory.dir('distributions')
 
     from(distCommonDirProvider) {
@@ -171,3 +169,119 @@ tasks.named('assemble') {
 tasks.named('build') {
     dependsOn tasks.named('packageZip')
 }
+
+// Centralized jpackage executable provider
+def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+def jpackageExeName = isWindows ? 'jpackage.exe' : 'jpackage'
+
+// Priority:
+// 1) -PjpackageJdk=/path/to/jdk
+// 2) JAVA_HOME
+// 3) Gradle toolchain (requests a JDK 21 and optional vendor via -PjpackageVendor)
+def jpackageExecutableProvider
+if (project.hasProperty('jpackageJdk')) {
+    jpackageExecutableProvider = providers.provider {
+        file(project.property('jpackageJdk').toString()).toPath().resolve("bin/${jpackageExeName}").toFile().absolutePath
+    }
+} else if (System.getenv('JAVA_HOME')) {
+    jpackageExecutableProvider = providers.provider {
+        file(System.getenv('JAVA_HOME')).toPath().resolve("bin/${jpackageExeName}").toFile().absolutePath
+    }
+} else {
+    jpackageExecutableProvider = javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(21))
+        if (project.hasProperty('jpackageVendor')) {
+            vendor.set(JvmVendorSpec.matching(project.property('jpackageVendor').toString()))
+        }
+    }.map { launcher ->
+        new File(launcher.metadata.installationPath.asFile, 'bin' + File.separator + jpackageExeName).absolutePath
+    }
+}
+
+
+// Prepare input directory for jpackage
+tasks.register('prepareJpackageInput', Copy) {
+    group = 'distribution'
+    description = 'Prepare files for jpackage (copies fatJar into input dir)'
+
+    dependsOn tasks.named('fatJar')
+
+    from tasks.named('fatJar').flatMap { it.archiveFile }
+    into layout.buildDirectory.dir('jpackage/input')
+    rename { 'ATCS.jar' }
+}
+
+// (args builder inlined into tasks to avoid closure delegation issues)
+
+// Exec task to create app-image using jpackage (configuration-cache friendly)
+tasks.register('jpackageImage', Exec) {
+    group = 'distribution'
+    description = 'Creates an app-image using jpackage'
+    dependsOn tasks.named('prepareJpackageInput')
+
+    doFirst {
+        def exePath = jpackageExecutableProvider.get()
+        if (!file(exePath).exists()) {
+            throw new GradleException("jpackage not found at: ${exePath}. Provide -PjpackageJdk or set JAVA_HOME or use -PjpackageVendor to select a toolchain vendor that provides jpackage.")
+        }
+        executable = exePath
+
+        def inputDir = layout.buildDirectory.dir('jpackage/input').get().asFile.absolutePath
+        def destDir = layout.buildDirectory.dir('jpackage/image').get().asFile.absolutePath
+        file(destDir).mkdirs()
+
+        def type = (project.findProperty('jpackageType') ?: 'app-image').toString()
+        def name = (project.findProperty('jpackageName') ?: 'ATCS').toString()
+        def appVer = (project.findProperty('jpackageAppVersion') ?: version.toString()).toString()
+        def extra = (project.findProperty('jpackageExtraArgs') ?: '')
+
+        def argsList = []
+        argsList += '--type'; argsList += type
+        argsList += '--input'; argsList += inputDir
+        argsList += '--main-jar'; argsList += 'ATCS.jar'
+        argsList += '--name'; argsList += name
+        argsList += '--app-version'; argsList += appVer
+        argsList += '--dest'; argsList += destDir
+        if (extra) {
+            argsList.addAll(extra.split('\\s+'))
+        }
+        args = argsList
+    }
+}
+
+// Exec task to create native installer (delegates to jpackage)
+tasks.register('jpackageInstaller', Exec) {
+    group = 'distribution'
+    description = 'Creates a native installer with jpackage (type controlled by -PjpackageType)'
+    dependsOn tasks.named('prepareJpackageInput')
+
+    doFirst {
+        def exePath = jpackageExecutableProvider.get()
+        if (!file(exePath).exists()) {
+            throw new GradleException("jpackage not found at: ${exePath}. Provide -PjpackageJdk or set JAVA_HOME or use -PjpackageVendor to select a toolchain vendor that provides jpackage.")
+        }
+        executable = exePath
+
+        def inputDir = layout.buildDirectory.dir('jpackage/input').get().asFile.absolutePath
+        def destDir = layout.buildDirectory.dir('jpackage/installer').get().asFile.absolutePath
+        file(destDir).mkdirs()
+
+        def type = (project.findProperty('jpackageType') ?: 'app-image').toString()
+        def name = (project.findProperty('jpackageName') ?: 'ATCS').toString()
+        def appVer = (project.findProperty('jpackageAppVersion') ?: version.toString()).toString()
+        def extra = (project.findProperty('jpackageExtraArgs') ?: '')
+
+        def argsList = []
+        argsList += '--type'; argsList += type
+        argsList += '--input'; argsList += inputDir
+        argsList += '--main-jar'; argsList += 'ATCS.jar'
+        argsList += '--name'; argsList += name
+        argsList += '--app-version'; argsList += appVer
+        argsList += '--dest'; argsList += destDir
+        if (extra) {
+            argsList.addAll(extra.split('\\s+'))
+        }
+        args = argsList
+    }
+}
+

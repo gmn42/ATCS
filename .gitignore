@@ -13,3 +13,5 @@ ATCS.jar
 /packaging/common/ATCS_v*.zip
 /packaging/common/ATCS_v*.tar.gz
 /local.properties
+.gradle
+build
