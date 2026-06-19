@@ -12,11 +12,13 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 
 public class WorkspaceSelector extends JFrame {
 
+    @Serial
     private static final long serialVersionUID = 7518745499760748574L;
 
     public String selected = null;
@@ -43,7 +45,12 @@ public class WorkspaceSelector extends JFrame {
             combo.addItem(path);
         }
         if (ConfigCache.getLatestWorkspace() != null) {
-            combo.setSelectedItem(wsPaths.get(workspaces.indexOf(ConfigCache.getLatestWorkspace())));
+            int latestWorkspaceIndex = workspaces.indexOf(ConfigCache.getLatestWorkspace());
+            if (latestWorkspaceIndex >= 0) {
+                combo.setSelectedItem(wsPaths.get(latestWorkspaceIndex));
+            } else {
+                combo.setSelectedItem(ConfigCache.getLatestWorkspace().getAbsolutePath());
+            }
         }
         combo.addActionListener(new ActionListener() {
             @Override
@@ -55,7 +62,7 @@ public class WorkspaceSelector extends JFrame {
         });
 
 
-        ok.setEnabled(ConfigCache.getLatestWorkspace() != null);
+        ok.setEnabled(combo.getSelectedItem() != null);
         ok.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -88,6 +95,7 @@ public class WorkspaceSelector extends JFrame {
                 fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
                 fc.setMultiSelectionEnabled(false);
                 fc.setAcceptAllFileFilterUsed(false);
+                fc.setDialogTitle("Choose a workspace directory");
                 int result = fc.showSaveDialog(WorkspaceSelector.this);
                 if (result == JFileChooser.APPROVE_OPTION) {
                     String selected = fc.getSelectedFile().getAbsolutePath();
@@ -113,6 +121,7 @@ public class WorkspaceSelector extends JFrame {
 
         JPanel dialogPane = new JPanel();
         dialogPane.setLayout(new BorderLayout());
+        dialogPane.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         dialogPane.add(logoLabel, BorderLayout.NORTH);
         dialogPane.add(new JLabel("Workspace : "), BorderLayout.WEST);

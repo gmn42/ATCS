@@ -154,12 +154,14 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
         pane.setScrollableWidth(ScrollablePanel.ScrollableSizeHint.FIT);
         pane.setLayout(new JideBoxLayout(pane, JideBoxLayout.PAGE_AXIS, 6));
 
+        // Set up top Section - Map name and alter/delete/filter controls
         addLabelField(pane, "TMX File: ", ((TMXMap) target).tmxFile.getAbsolutePath());
         createButtonPane(pane, map.getProject(), map, listener);
         outsideBox = addIntegerBasedCheckBox(pane, "Map is outdoors", map.outside, map.writable, listener);
         outsideBox.setMnemonic(KeyEvent.VK_O);
         colorFilterBox = addEnumValueBox(pane, "Color Filter", TMXMap.ColorFilter.values(), map.colorFilter, map.writable, listener);
 
+        // Set up the Layers panel
         addLayersPanel(pane, map, listener);
 
         // Set up the main map (TMX) viewer
@@ -171,6 +173,7 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
         tmxScroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         pane.add(tmxScroller, JideBoxLayout.FIX);
 
+        // Set up lower panels
         addTMXMapSpritesheetsList(pane, ((TMXMap) target));
 
         addBacklinksList(pane, map);
@@ -368,7 +371,7 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
             mapObjectSettingsPane.setLayout(new JideBoxLayout(mapObjectSettingsPane, JideBoxLayout.PAGE_AXIS, 6));
             JScrollPane mapObjectSettingsScroller = new JScrollPane(mapObjectSettingsPane);
             NestedScrollListener.install(mapObjectSettingsScroller);
-            mapObjectSettingsScroller.getVerticalScrollBar().setUnitIncrement(16);
+            mapObjectSettingsScroller.getVerticalScrollBar().setUnitIncrement(12);
             objectGroupDetailsSplitter.setRightComponent(mapObjectSettingsScroller);
             pane.add(objectGroupDetailsSplitter, JideBoxLayout.VARY);
         }
@@ -379,7 +382,6 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
     @SuppressWarnings({"rawtypes", "unchecked"})
     public void updateMapObjectSettingsPane(JPanel pane, final MapObject selected, final FieldUpdateListener listener) {
         pane.removeAll();
-        boolean needVary = true;
         if (selected instanceof ContainerArea) {
             droplistBox = addDroplistBox(pane, ((TMXMap) target).getProject(), "Droplist: ", ((ContainerArea) selected).droplist, ((TMXMap) target).writable, listener);
         } else if (selected instanceof KeyArea) {
@@ -446,20 +448,23 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
             });
             pane.add(tACPane, JideBoxLayout.FIX);
         } else if (selected instanceof ReplaceArea) {
+            // Area ID field
             areaField = addTextField(pane, "Area ID: ", ((ReplaceArea) selected).name, ((TMXMap) target).writable, listener);
+            // Requirement Type combobox
             requirementTypeCombo = addEnumValueBox(pane, "Requirement type: ", Requirement.RequirementType.values(), ((ReplaceArea) selected).requirement.type, ((TMXMap) target).writable, listener);
+            // Set pane for variable requirement parameters (populated by updateRequirementParamsPane())
             requirementParamsPane = new JPanel();
             requirementParamsPane.setLayout(new JideBoxLayout(requirementParamsPane, JideBoxLayout.PAGE_AXIS, 6));
             pane.add(requirementParamsPane, JideBoxLayout.FIX);
             updateRequirementParamsPane(requirementParamsPane, ((ReplaceArea) selected).requirement, listener);
 
-            CollapsiblePanel replacementListPane = new CollapsiblePanel("Replacements");
-            replacementListPane.setLayout(new JideBoxLayout(replacementListPane, JideBoxLayout.PAGE_AXIS));
+            // The replacement list box itself (collapsable list)
             replacementsListModel = new ReplacementsListModel((ReplaceArea) selected);
             replacementsList = new JList(replacementsListModel);
             replacementsList.setCellRenderer(new ReplacementsListRenderer((ReplaceArea) selected));
-            replacementListPane.add(new JScrollPane(replacementsList), JideBoxLayout.VARY);
+            CollapsibleScrollList replacementListPane = new CollapsibleScrollList("Replacements", replacementsList);
 
+            // Button panel under the list - Add and Delete buttons
             JPanel replacementListButtonsPane = new JPanel();
             replacementListButtonsPane.setLayout(new JideBoxLayout(replacementListButtonsPane, JideBoxLayout.LINE_AXIS));
             addReplacement = new JButton(new ImageIcon(DefaultIcons.getCreateIcon()));
@@ -481,13 +486,14 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
                 }
             });
             replacementListButtonsPane.add(new JPanel(), JideBoxLayout.VARY);
+
             replacementListPane.add(replacementListButtonsPane, JideBoxLayout.FIX);
 
+            // This gets the "Replace X by Y" boxes after a replacement is selected in the list
             replacementEditPane = new JPanel();
             replacementListPane.add(replacementEditPane, JideBoxLayout.FIX);
 
-            pane.add(new JScrollPane(replacementListPane), JideBoxLayout.VARY);
-
+            pane.add(replacementListPane, JideBoxLayout.FIX);
 
             replacementsList.addListSelectionListener(new ListSelectionListener() {
                 @Override
@@ -497,7 +503,6 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
                     deleteReplacement.setEnabled(((TMXMap) target).writable);
                 }
             });
-
 
         } else if (selected instanceof RestArea) {
             areaField = addTextField(pane, "Area ID: ", ((RestArea) selected).name, ((TMXMap) target).writable, listener);
@@ -513,6 +518,8 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
             respawnSpeedField = addIntegerField(pane, "Respawn-Speed of NPCs: ", ((SpawnArea) selected).respawnSpeed, false, ((TMXMap) target).writable, listener);
             spawnActiveForNewGame = addBooleanBasedCheckBox(pane, "Active in a new game: ", ((SpawnArea) selected).active, ((TMXMap) target).writable, listener);
             spawnIgnoreAreas = addBooleanBasedCheckBox(pane, "Monsters can walk on other game objects: ", ((SpawnArea) selected).ignoreAreas, ((TMXMap) target).writable, listener);
+
+            // List box with the NPCs
             npcListModel = new SpawnGroupNpcListModel((SpawnArea) selected);
             npcList = new JList(npcListModel);
             npcList.setCellRenderer(new GDERenderer(true, ((TMXMap) target).writable));
@@ -535,12 +542,9 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
                     }
                 }
             });
-            JScrollPane npcListScroller = new JScrollPane(npcList);
-            npcListScroller.getVerticalScrollBar().setUnitIncrement(16);
-            pane.add(npcListScroller, JideBoxLayout.VARY);
-            needVary = false;
+            CollapsibleScrollList npcListScroller = new CollapsibleScrollList("NPCs in spawn group", npcList);
+            pane.add(npcListScroller, JideBoxLayout.FIX);
         }
-        if (needVary) pane.add(new JPanel(), JideBoxLayout.VARY);
         pane.revalidate();
         pane.repaint();
     }
@@ -1057,15 +1061,7 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
             }
         });
         list.setCellRenderer(new SpritesheetCellRenderer(true));
-        JScrollPane scroller = new JScrollPane(list);
-        NestedScrollListener.install(scroller);
-
-        CollapsiblePanel colPane = new CollapsiblePanel("Spritesheets used in this map");
-        colPane.setLayout(new JideBoxLayout(colPane, JideBoxLayout.PAGE_AXIS));
-        colPane.add(scroller, JideBoxLayout.FIX);
-        colPane.add(new JPanel(), JideBoxLayout.FIX);
-        pane.add(colPane, JideBoxLayout.FIX);
-        UiUtils.resizeListToFit(list);
+        pane.add(new CollapsibleScrollList("Spritesheets used in this map", list));
         return list;
     }
 
@@ -1629,6 +1625,35 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
         tmxViewer.revalidate();
     }
 
+    @Override
+    public boolean canSaveCurrent() {
+        TMXMap map = (TMXMap) target;
+        return map != null && map.writable && map.state != TMXMap.State.saved;
+    }
+
+    @Override
+    public void saveCurrent() {
+        if (!canSaveCurrent()) return;
+
+        TMXMap map = (TMXMap) target;
+
+        if (map.changedOnDisk) {
+            int confirm = JOptionPane.showConfirmDialog(TMXMapEditor.this,
+                                                        "You modified this map in an external tool. All external changes will be lost if you confirm.\n On the other hand, if you reload in ATCS, all ATCS-made changes will be lost.\n Do you want to save?",
+                                                        "Confirm save?", JOptionPane.OK_CANCEL_OPTION);
+            if (confirm == JOptionPane.CANCEL_OPTION) return;
+            File backup = FileUtils.backupFile(map.tmxFile);
+            if (backup != null) {
+                JOptionPane.showMessageDialog(TMXMapEditor.this, "The externally-modified file was backed up as " + backup.getAbsolutePath(), "File backed up",
+                                              JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(TMXMapEditor.this, "The externally-modified file could not be backed up.", "File backup failed", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+        map.save();
+        ATContentStudio.frame.nodeChanged(map);
+    }
+
 
     protected void selectMapObject(MapObject obj) {
         for (MapObjectGroup group : ((TMXMap) target).groups) {
@@ -1693,28 +1718,7 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
             // Save Button
             JButton save = new JButton(SAVE);
             save.setMnemonic(KeyEvent.VK_S);
-            save.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    if (map.state != TMXMap.State.saved) {
-                        if (map.changedOnDisk) {
-                            int confirm = JOptionPane.showConfirmDialog(TMXMapEditor.this,
-                                                                        "You modified this map in an external tool. All external changes will be lost if you confirm.\n On the other hand, if you reload in ATCS, all ATCS-made changes will be lost.\n Do you want to save?",
-                                                                        "Confirm save?", JOptionPane.OK_CANCEL_OPTION);
-                            if (confirm == JOptionPane.CANCEL_OPTION) return;
-                            File backup = FileUtils.backupFile(map.tmxFile);
-                            if (backup != null) {
-                                JOptionPane.showMessageDialog(TMXMapEditor.this, "The externally-modified file was backed up as " + backup.getAbsolutePath(), "File backed up",
-                                                              JOptionPane.INFORMATION_MESSAGE);
-                            } else {
-                                JOptionPane.showMessageDialog(TMXMapEditor.this, "The externally-modified file could not be backed up.", "File backup failed", JOptionPane.ERROR_MESSAGE);
-                            }
-                        }
-                        map.save();
-                        ATContentStudio.frame.nodeChanged(map);
-                    }
-                }
-            });
+            save.addActionListener(e -> saveCurrent());
             savePane.add(save, JideBoxLayout.FIX);
             JButton delete = new JButton(DELETE);
             if (map.getDataType() == GameSource.Type.altered) {
@@ -1723,6 +1727,8 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
             delete.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
+                    if (!ConfirmationDialogs.confirmDelete(TMXMapEditor.this, map)) return;
+
                     ATContentStudio.frame.closeEditor(map);
                     map.childrenRemoved(new ArrayList<ProjectTreeNode>());
                     map.delete();

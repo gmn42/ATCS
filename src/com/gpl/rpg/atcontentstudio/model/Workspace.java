@@ -22,7 +22,9 @@ import java.util.*;
 public class Workspace implements ProjectTreeNode, Serializable, JsonSerializable {
 
     private static final long serialVersionUID = 7938633033601384956L;
-
+    private static final Dimension DEFAULT_NEW_WORKSPACE_WINDOW_SIZE = new Dimension(1280, 720);
+    private static final int DEFAULT_NEW_WORKSPACE_TOP_DOWN_SPLIT = 600;
+    private static final int DEFAULT_NEW_WORKSPACE_LEFT_RIGHT_SPLIT = 200;
     public static final String WS_SETTINGS_FILE = ".workspace";
     public static final String WS_SETTINGS_FILE_JSON = ".workspace.json";
 
@@ -57,6 +59,7 @@ public class Workspace implements ProjectTreeNode, Serializable, JsonSerializabl
             try {
                 settingsFile.createNewFile();
                 freshWorkspace = true;
+                applyDefaultPreferencesForNewWorkspace();
             } catch (IOException e) {
                 Notification.addError("Error creating workspace datafile: "
                                               + e.getMessage());
@@ -67,6 +70,12 @@ public class Workspace implements ProjectTreeNode, Serializable, JsonSerializabl
         }
         if (freshWorkspace)
             save();
+    }
+
+    private void applyDefaultPreferencesForNewWorkspace() {
+        preferences.windowSize = new Dimension(DEFAULT_NEW_WORKSPACE_WINDOW_SIZE);
+        preferences.splittersPositions.put("StudioFrame.topDown", DEFAULT_NEW_WORKSPACE_TOP_DOWN_SPLIT);
+        preferences.splittersPositions.put("StudioFrame.leftRight", DEFAULT_NEW_WORKSPACE_LEFT_RIGHT_SPLIT);
     }
 
     @Override
@@ -143,6 +152,15 @@ public class Workspace implements ProjectTreeNode, Serializable, JsonSerializabl
             }
         }
         activeWorkspace = w;
+    }
+
+    public static boolean isValidWorkspaceRoot(File workspaceRoot) {
+        if (workspaceRoot == null || !workspaceRoot.isDirectory()) {
+            return false;
+        }
+
+        return new File(workspaceRoot, WS_SETTINGS_FILE_JSON).isFile()
+                || new File(workspaceRoot, WS_SETTINGS_FILE).isFile();
     }
 
     private static Workspace loadWorkspaceFromJson(File workspaceRoot, File settingsFile) {
@@ -304,6 +322,33 @@ public class Workspace implements ProjectTreeNode, Serializable, JsonSerializabl
                         saveActive();
                     }
                 });
+    }
+
+    public Project loadProjectByName(String projectName) {
+        if (projectName == null) {
+            return null;
+        }
+
+        for (ProjectTreeNode node : projects) {
+            if (node instanceof Project) {
+                Project project = (Project) node;
+                if (projectName.equals(project.name)) {
+                    return project;
+                }
+            } else if (node instanceof ClosedProject) {
+                ClosedProject closedProject = (ClosedProject) node;
+                if (projectName.equals(closedProject.name)) {
+                    File projectRoot = new File(baseFolder, closedProject.name);
+                    return Project.fromFolder(this, projectRoot);
+                }
+            }
+        }
+
+        if (projectsName.contains(projectName)) {
+            return Project.fromFolder(this, new File(baseFolder, projectName));
+        }
+
+        return null;
     }
 
     public void refreshTransients() {
