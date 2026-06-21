@@ -1,13 +1,27 @@
 plugins {
-    id 'application'
-    id 'java'
+    id('java')
+    id('application')
+    // Shadow plugin to build the fat JAR
+    id('com.gradleup.shadow') version "9.4.2"
+    // Badass runtime plugin to hanbdle jlink and jpackage tasks
+    id('org.beryx.runtime') version "2.0.1"
 }
 
 group = 'com.gpl.rpg.atcontentstudio'
-version = file('res/ATCS_latest').text.trim()
+version = file('res/ATCS_latest').text.trim().replaceFirst(/^v/, '')
 
 def mainClassNameValue = 'com.gpl.rpg.atcontentstudio.ATContentStudio'
 def appVersion = version.toString()
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation fileTree(dir: 'lib', include: ['*.jar'])
+
+    testImplementation fileTree(dir: 'lib', include: ['junit-*.jar'])
+}
 
 java {
     toolchain {
@@ -18,10 +32,6 @@ java {
 
 application {
     mainClass.set(mainClassNameValue)
-}
-
-repositories {
-    mavenCentral()
 }
 
 sourceSets {
@@ -52,21 +62,53 @@ sourceSets {
     }
 }
 
-configurations.all {
-    resolutionStrategy {
-        failOnVersionConflict()
+// shadowJar creates the "fat Jar" with all libraries and resources, including the runtime
+shadowJar {
+    archiveClassifier.set('all')
+    manifest {
+        attributes(
+                'Manifest-Version': '1.0',
+                'Main-Class': application.mainClass.get())
+    }
+
+    from('src/com/gpl/rpg/atcontentstudio/img') {
+        into('com/gpl/rpg/atcontentstudio/img')
+    }
+
+    from('hacked-libtiled/tiled/io/resources') {
+        into('tiled/io/resources')
+    }
+
+    from('res/ATCS_latest')
+}
+
+tasks.register('collectRuntimeLibs', Copy) {
+    group = 'build'
+    description = 'Collect thin jar and runtime dependency jars into build/libs for jlink/jpackage'
+
+    // ensure the project's thin jar is built first
+    dependsOn tasks.named('jar')
+
+    into("$buildDir/libs")
+    from(tasks.named('jar')) {
+        into ''
+    }
+    from(configurations.runtimeClasspath) {
+        include '*.jar'
+        into ''
     }
 }
 
-dependencies {
-    implementation fileTree(dir: 'lib', include: ['*.jar'])
+//configurations.all {
+//    resolutionStrategy {
+//        failOnVersionConflict()
+//    }
+//}
 
-    testImplementation fileTree(dir: 'lib', include: ['junit-*.jar'])
-}
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.release = 17
+    options.release = 21
 }
 
 tasks.withType(Jar).configureEach {
@@ -76,51 +118,13 @@ tasks.withType(Jar).configureEach {
 tasks.named('processResources') {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
-
-tasks.named('jar', Jar) {
-    archiveBaseName.set('ATCS-thin')
-    manifest {
-        attributes('Main-Class': mainClassNameValue)
-    }
-}
-
-tasks.register('fatJar', Jar) {
-    group = 'build'
-    description = 'Builds a runnable fat jar similar to the legacy packaging script.'
-
-    // use provider-style API to avoid deprecation warnings on Gradle 9.x
-    archiveBaseName.set('ATCS')
-    archiveVersion.set('')
-    archiveClassifier.set('')
-
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
-    manifest {
-        attributes(
-                'Manifest-Version': '1.0',
-                'Main-Class': mainClassNameValue
-        )
-    }
-
-    from sourceSets.main.output
-
-    dependsOn configurations.runtimeClasspath
-    from {
-        configurations.runtimeClasspath
-                .findAll { it.name.toLowerCase().endsWith('.jar') }
-                .collect { zipTree(it) }
-    }
-
-    from('src/com/gpl/rpg/atcontentstudio/img') {
-        into 'com/gpl/rpg/atcontentstudio/img'
-    }
-
-    from('hacked-libtiled/tiled/io/resources') {
-        into 'tiled/io/resources'
-    }
-
-    from('res/ATCS_latest')
-}
+//
+//tasks.named('jar', Jar) {
+////    archiveBaseName.set('ATCS-thin')
+//    manifest {
+//        attributes('Main-Class': mainClassNameValue)
+//    }
+//}
 
 def distCommonDirProvider = layout.buildDirectory.dir('dist/common')
 
@@ -128,11 +132,11 @@ tasks.register('prepareDistCommon', Copy) {
     group = 'distribution'
     description = 'Prepares the common distribution directory.'
 
-    dependsOn tasks.named('fatJar')
+    dependsOn tasks.named('shadowJar')
 
     into distCommonDirProvider
 
-    from(tasks.named('fatJar')) {
+    from(tasks.named('shadowJar')) {
         rename { 'ATCS.jar' }
     }
 
@@ -151,8 +155,7 @@ tasks.register('packageZip', Zip) {
     description = 'Builds a zip archive similar to packaging/package.sh.'
 
     dependsOn tasks.named('prepareDistCommon')
-    // use provider-style archive properties
-    archiveBaseName.set('ATCS')
+    //archiveBaseName.set('ATCS')
     archiveVersion.set(appVersion)
     archiveClassifier.set('')
     destinationDirectory = layout.buildDirectory.dir('distributions')
@@ -163,125 +166,83 @@ tasks.register('packageZip', Zip) {
 }
 
 tasks.named('assemble') {
-    dependsOn tasks.named('fatJar')
+    dependsOn tasks.named('shadowJar')
 }
 
 tasks.named('build') {
     dependsOn tasks.named('packageZip')
 }
 
-// Centralized jpackage executable provider
-def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
-def jpackageExeName = isWindows ? 'jpackage.exe' : 'jpackage'
+// Configure the jpackage installer task
+runtime {
+    // Strips debugging info and compresses the bundled runtime image to save space
+    options = ['--strip-debug', '--compress=2', '--no-header-files', '--no-man-pages']
 
-// Priority:
-// 1) -PjpackageJdk=/path/to/jdk
-// 2) JAVA_HOME
-// 3) Gradle toolchain (requests a JDK 21 and optional vendor via -PjpackageVendor)
-def jpackageExecutableProvider
-if (project.hasProperty('jpackageJdk')) {
-    jpackageExecutableProvider = providers.provider {
-        file(project.property('jpackageJdk').toString()).toPath().resolve("bin/${jpackageExeName}").toFile().absolutePath
-    }
-} else if (System.getenv('JAVA_HOME')) {
-    jpackageExecutableProvider = providers.provider {
-        file(System.getenv('JAVA_HOME')).toPath().resolve("bin/${jpackageExeName}").toFile().absolutePath
-    }
-} else {
-    jpackageExecutableProvider = javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(21))
-        if (project.hasProperty('jpackageVendor')) {
-            vendor.set(JvmVendorSpec.matching(project.property('jpackageVendor').toString()))
-        }
-    }.map { launcher ->
-        new File(launcher.metadata.installationPath.asFile, 'bin' + File.separator + jpackageExeName).absolutePath
-    }
-}
+    // Explicitly tells the plugin to use the generated fat JAR as the main input
+    jpackage {
 
+        // Use the jar produced by the shadowJar task (provider mapped to filename)
+        mainJar = tasks.named('shadowJar').map { it.archiveFileName.get() }.get()
+        mainClass = application.mainClass.get()
 
-// Prepare input directory for jpackage
-tasks.register('prepareJpackageInput', Copy) {
-    group = 'distribution'
-    description = 'Prepare files for jpackage (copies fatJar into input dir)'
+        modules = [
+            'java.base',
+            'java.desktop',
+            'java.management',
+            'java.net.http',
+            'java.sql'
+        ]
+        // Installer naming configuration
 
-    dependsOn tasks.named('fatJar')
-
-    from tasks.named('fatJar').flatMap { it.archiveFile }
-    into layout.buildDirectory.dir('jpackage/input')
-    rename { 'ATCS.jar' }
-}
-
-// (args builder inlined into tasks to avoid closure delegation issues)
-
-// Exec task to create app-image using jpackage (configuration-cache friendly)
-tasks.register('jpackageImage', Exec) {
-    group = 'distribution'
-    description = 'Creates an app-image using jpackage'
-    dependsOn tasks.named('prepareJpackageInput')
-
-    doFirst {
-        def exePath = jpackageExecutableProvider.get()
-        if (!file(exePath).exists()) {
-            throw new GradleException("jpackage not found at: ${exePath}. Provide -PjpackageJdk or set JAVA_HOME or use -PjpackageVendor to select a toolchain vendor that provides jpackage.")
-        }
-        executable = exePath
-
-        def inputDir = layout.buildDirectory.dir('jpackage/input').get().asFile.absolutePath
-        def destDir = layout.buildDirectory.dir('jpackage/image').get().asFile.absolutePath
-        file(destDir).mkdirs()
-
-        def type = (project.findProperty('jpackageType') ?: 'app-image').toString()
-        def name = (project.findProperty('jpackageName') ?: 'ATCS').toString()
-        def appVer = (project.findProperty('jpackageAppVersion') ?: version.toString()).toString()
-        def extra = (project.findProperty('jpackageExtraArgs') ?: '')
-
-        def argsList = []
-        argsList += '--type'; argsList += type
-        argsList += '--input'; argsList += inputDir
-        argsList += '--main-jar'; argsList += 'ATCS.jar'
-        argsList += '--name'; argsList += name
-        argsList += '--app-version'; argsList += appVer
-        argsList += '--dest'; argsList += destDir
-        if (extra) {
-            argsList.addAll(extra.split('\\s+'))
-        }
-        args = argsList
+        imageName = "ATContentStudio"
+        installerName = "ATContentStudio-${appVersion}"
+        // Define target installer type depending on the host OS
+        // e.g., "exe" or "msi" for Windows, "dmg" or "pkg" for macOS, "deb" or "rpm" for Linux
+//        if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+//            installerType = "msi"
+//        } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+//            installerType = "dmg"
+//        } else {
+//            installerType = "rpm"
+//        }
+        skipInstaller = true
+        //installerType = "app-image"
     }
 }
 
-// Exec task to create native installer (delegates to jpackage)
-tasks.register('jpackageInstaller', Exec) {
-    group = 'distribution'
-    description = 'Creates a native installer with jpackage (type controlled by -PjpackageType)'
-    dependsOn tasks.named('prepareJpackageInput')
+// Ensure the fat JAR is always compiled before jpackage runs
+tasks.named('jpackage') {
+    dependsOn tasks.named('shadowJar')
 
-    doFirst {
-        def exePath = jpackageExecutableProvider.get()
-        if (!file(exePath).exists()) {
-            throw new GradleException("jpackage not found at: ${exePath}. Provide -PjpackageJdk or set JAVA_HOME or use -PjpackageVendor to select a toolchain vendor that provides jpackage.")
-        }
-        executable = exePath
-
-        def inputDir = layout.buildDirectory.dir('jpackage/input').get().asFile.absolutePath
-        def destDir = layout.buildDirectory.dir('jpackage/installer').get().asFile.absolutePath
-        file(destDir).mkdirs()
-
-        def type = (project.findProperty('jpackageType') ?: 'app-image').toString()
-        def name = (project.findProperty('jpackageName') ?: 'ATCS').toString()
-        def appVer = (project.findProperty('jpackageAppVersion') ?: version.toString()).toString()
-        def extra = (project.findProperty('jpackageExtraArgs') ?: '')
-
-        def argsList = []
-        argsList += '--type'; argsList += type
-        argsList += '--input'; argsList += inputDir
-        argsList += '--main-jar'; argsList += 'ATCS.jar'
-        argsList += '--name'; argsList += name
-        argsList += '--app-version'; argsList += appVer
-        argsList += '--dest'; argsList += destDir
-        if (extra) {
-            argsList.addAll(extra.split('\\s+'))
-        }
-        args = argsList
-    }
 }
 
+//tasks.register('buildFlatpak', Exec) {
+//    group = 'distribution'
+//    description = 'Wraps the Badass Runtime jpackage output into a native Flatpak bundle'
+//
+//    // 1. Force the Badass Runtime plugin to finish building the app-image first
+//    dependsOn tasks.named('jpackageImage')
+//
+//    // 2. Define output and source paths matching your project directory
+//    def flatpakBuildDir = layout.buildDirectory.dir('flatpak-build')
+//    def flatpakRepoDir  = layout.buildDirectory.dir('flatpak-repo')
+//    def manifestFile    = "${projectDir}/packaging/flatpak/com.gpl.rpg.atcontentstudio.yaml"
+//
+//    // 3. Environment cleanup before execution to prevent cached overlay bugs
+//    doFirst {
+//        project.delete(flatpakBuildDir)
+//        //if (!Files.exists(Paths.get(manifestFile))) {
+//        //    throw new GradleException("Flatpak manifest missing! Please verify file exists at: ${manifestFile}")
+//        //}
+//    }
+//
+//    // 4. Call the local native builder utility directly
+//    commandLine(
+//            'flatpak-builder',
+//            '--force-clean',
+//            "--repo=${flatpakRepoDir.get().asFile.absolutePath}",
+//            flatpakBuildDir.get().asFile.absolutePath,
+//            manifestFile
+//
+//    )
+//}

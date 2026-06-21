@@ -76,6 +76,7 @@ public class TMXMap extends GameDataElement {
             } catch (Exception e) {
                 Notification.addError("Error while loading TMX map file " + tmxFile.getAbsolutePath() + ": " + e.getMessage());
                 e.printStackTrace();
+                return;
             }
             for (tiled.core.MapLayer layer : tmxMap.getLayers()) {
                 if (layer instanceof tiled.core.ObjectGroup) {

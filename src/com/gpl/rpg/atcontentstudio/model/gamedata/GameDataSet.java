@@ -55,6 +55,7 @@ public class GameDataSet implements ProjectTreeNode, Serializable {
         v = new SavedSlotCollection();
 
         if (parent.type.equals(GameSource.Type.altered) || parent.type.equals(GameSource.Type.created)) {
+            System.out.println("Attempting to read project from " + parent.baseFolder + "/" + GameDataSet.DEFAULT_REL_PATH_IN_PROJECT);
             this.baseFolder = new File(parent.baseFolder, GameDataSet.DEFAULT_REL_PATH_IN_PROJECT);
             if (!baseFolder.exists()) this.baseFolder.mkdirs();
         } else if (parent.type.equals(GameSource.Type.source)) {

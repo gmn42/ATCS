@@ -1,0 +1,22 @@
+id: com.gpl.rpg.atcontentstudio
+runtime: org.freedesktop.Platform
+runtime-version: "25.08"
+sdk: org.freedesktop.Sdk
+command: ATContentStudio
+
+finish-args:
+  - --socket=x11
+  - --socket=wayland
+  - --share=ipc
+  - --filesystem=home
+
+modules:
+  - name: atcontentstudio
+    buildsystem: simple
+    build-commands:
+      # Recursively copy the fully compiled runtime structure into the package root
+      - cp -r * /app/
+    sources:
+      - type: dir
+        # Point directly to where the Badass Runtime plugin deposits the app-image folder
+        path: ../../build/jpackage/ATContentStudio

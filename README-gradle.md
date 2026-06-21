@@ -7,7 +7,7 @@ This Gradle build replaces the old IDE-only build configuration and covers the c
 - JDK 11 or newer
 - Gradle wrapper recommended
 
-The project is configured to compile to Java 11 bytecode.
+The project is configured to compile to Java 17 bytecode.
 
 ## Main tasks
 
