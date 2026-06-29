@@ -219,7 +219,7 @@ runtime {
         // Define target installer type depending on the host OS
         // e.g., "exe" or "msi" for Windows, "dmg" or "pkg" for macOS, "deb" or "rpm" for Linux
         if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
-            installerType = "msi"
+            installerType = "exe"
         } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
             installerType = "dmg"
         } else {
