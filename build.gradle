@@ -190,7 +190,6 @@ tasks.named('assemble') {
 
 // Make build produce both the distributable zip and the jpackage image.
 tasks.named('build') {
-    dependsOn tasks.named('packageZip')
     dependsOn tasks.named('jpackage')
 }
 
@@ -219,7 +218,7 @@ runtime {
         // Installer naming configuration
 
         imageName = "ATContentStudio"
-        installerName = "ATContentStudio-${appVersion}"
+        installerName = "ATContentStudio"
         if (windowsConsoleMode) {
             imageOptions += ['--win-console']
             installerOptions += ['--win-console']
