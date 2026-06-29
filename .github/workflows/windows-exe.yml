@@ -1,4 +1,4 @@
-name: Windows Installer EXE Build
+name: Windows Installer Build
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  exe:
+  windows-installers:
     runs-on: windows-latest
 
     steps:
@@ -32,10 +32,19 @@ jobs:
           $wixBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Build EXE installer
-        run: .\gradlew.bat jpackage --no-daemon
+        run: .\gradlew.bat packageExe --no-daemon
+
+      - name: Build MSI installer
+        run: .\gradlew.bat packageMsi --no-daemon
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: atcs-exe
           path: build/**/*.exe
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: atcs-msi
+          path: build/**/*.msi
