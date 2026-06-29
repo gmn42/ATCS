@@ -1,39 +1,53 @@
+// Build plugins used by this project.
 plugins {
     id('java')
     id('application')
     // Shadow plugin to build the fat JAR
     id('com.gradleup.shadow') version "9.4.2"
-    // Badass runtime plugin to hanbdle jlink and jpackage tasks
+    // Badass runtime plugin to handle jlink and jpackage tasks
     id('org.beryx.runtime') version "2.0.1"
 }
 
+// Project identity and versioning.
 group = 'com.gpl.rpg.atcontentstudio'
 version = file('res/ATCS_latest').text.trim().replaceFirst(/^v/, '')
 
 def mainClassNameValue = 'com.gpl.rpg.atcontentstudio.ATContentStudio'
 def appVersion = version.toString()
 
+// Artifact and dependency repositories.
 repositories {
     mavenCentral()
 }
 
+// Local jars are checked into lib/ and used as implementation/test dependencies.
 dependencies {
     implementation fileTree(dir: 'lib', include: ['*.jar'])
 
     testImplementation fileTree(dir: 'lib', include: ['junit-*.jar'])
 }
 
+// Java toolchain and source jar settings.
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(25))
+        languageVersion.set(JavaLanguageVersion.of(21))
+        vendor.set(org.gradle.jvm.toolchain.JvmVendorSpec.ADOPTIUM)
     }
     withSourcesJar()
 }
 
+// Use the Gradle-managed JDK so jlink has a full toolchain without a hard-coded path.
+def runtimeJdk = javaToolchains.launcherFor {
+    languageVersion.set(JavaLanguageVersion.of(21))
+    vendor.set(org.gradle.jvm.toolchain.JvmVendorSpec.ADOPTIUM)
+}.get().metadata.installationPath.asFile
+
+// Application entry point for Gradle run and packaged launchers.
 application {
     mainClass.set(mainClassNameValue)
 }
 
+// Custom source/resource layout for the project.
 sourceSets {
     main {
         java {
@@ -47,9 +61,11 @@ sourceSets {
         resources {
             setSrcDirs([
                     'res',
-                    'src'
+                    'src',
+                    'hacked-libtiled' // Needed to include the libtiled resources/map.dtd
             ])
             exclude '**/*.java'
+            exclude 'build.xml'  // Exclude ant build.xml that comes with libtiled
         }
     }
 
@@ -62,7 +78,7 @@ sourceSets {
     }
 }
 
-// shadowJar creates the "fat Jar" with all libraries and resources, including the runtime
+// Build the fat jar used for packaging and runtime distribution.
 shadowJar {
     archiveClassifier.set('all')
     manifest {
@@ -82,6 +98,7 @@ shadowJar {
     from('res/ATCS_latest')
 }
 
+// Collect the thin jar plus runtime jars into build/libs for jlink/jpackage.
 tasks.register('collectRuntimeLibs', Copy) {
     group = 'build'
     description = 'Collect thin jar and runtime dependency jars into build/libs for jlink/jpackage'
@@ -99,35 +116,31 @@ tasks.register('collectRuntimeLibs', Copy) {
     }
 }
 
-//configurations.all {
-//    resolutionStrategy {
-//        failOnVersionConflict()
-//    }
-//}
-
+configurations.configureEach {
+    resolutionStrategy {
+        failOnVersionConflict()
+    }
+}
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release = 21
 }
 
+// Keep jar packaging deterministic and avoid duplicate entries.
 tasks.withType(Jar).configureEach {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
+// Avoid duplicate resource entries during processing.
 tasks.named('processResources') {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
-//
-//tasks.named('jar', Jar) {
-////    archiveBaseName.set('ATCS-thin')
-//    manifest {
-//        attributes('Main-Class': mainClassNameValue)
-//    }
-//}
 
+// Shared distribution output used by the zip packaging task.
 def distCommonDirProvider = layout.buildDirectory.dir('dist/common')
 
+// Prepare the common distribution layout consumed by the zip package.
 tasks.register('prepareDistCommon', Copy) {
     group = 'distribution'
     description = 'Prepares the common distribution directory.'
@@ -150,6 +163,7 @@ tasks.register('prepareDistCommon', Copy) {
     }
 }
 
+// Build the distributable zip archive.
 tasks.register('packageZip', Zip) {
     group = 'distribution'
     description = 'Builds a zip archive similar to packaging/package.sh.'
@@ -165,16 +179,22 @@ tasks.register('packageZip', Zip) {
     }
 }
 
+// Make assemble produce the fat jar.
 tasks.named('assemble') {
     dependsOn tasks.named('shadowJar')
 }
 
+// Make build produce both the distributable zip and the jpackage image.
 tasks.named('build') {
     dependsOn tasks.named('packageZip')
+    dependsOn tasks.named('jpackage')
 }
 
-// Configure the jpackage installer task
+// Configure the runtime image and jpackage installer output.
 runtime {
+    // Use the Gradle-managed JDK so jlink has a full toolchain without a hard-coded path.
+    javaHome = runtimeJdk
+
     // Strips debugging info and compresses the bundled runtime image to save space
     options = ['--strip-debug', '--compress=2', '--no-header-files', '--no-man-pages']
 
@@ -206,11 +226,11 @@ runtime {
 //            installerType = "rpm"
 //        }
         skipInstaller = true
-        //installerType = "app-image"
+        installerType = "app-image"
     }
 }
 
-// Ensure the fat JAR is always compiled before jpackage runs
+// Ensure the fat jar exists before jpackage runs.
 tasks.named('jpackage') {
     dependsOn tasks.named('shadowJar')
 

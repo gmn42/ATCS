@@ -38,6 +38,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.StringReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -913,12 +914,17 @@ public class TMXMapReader
     private class MapEntityResolver implements EntityResolver
     {
         public InputSource resolveEntity(String publicId, String systemId) {
-            if (systemId.equals("http://mapeditor.org/dtd/1.0/map.dtd") ||
-            	systemId.equals("https://mapeditor.org/dtd/1.0/map.dtd")) {
-                return new InputSource(TMXMapReader.class.getResourceAsStream(
-                        "resources/map.dtd"));
+            if ("http://mapeditor.org/dtd/1.0/map.dtd".equals(systemId) ||
+            	"https://mapeditor.org/dtd/1.0/map.dtd".equals(systemId)) {
+                InputStream mapDtd = TMXMapReader.class.getResourceAsStream(
+                        "resources/map.dtd");
+                if (mapDtd != null) {
+                    InputSource source = new InputSource(mapDtd);
+                    source.setSystemId(systemId);
+                    return source;
+                }
             }
-            return null;
+            return new InputSource(new StringReader(""));
         }
     }
 
