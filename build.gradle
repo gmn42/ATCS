@@ -44,6 +44,7 @@ def runtimeJdk = javaToolchains.launcherFor {
 
 def installerTypeOverride = providers.gradleProperty('installerTypeOverride').orNull
 def windowsConsoleMode = providers.gradleProperty('windowsConsoleMode').map { it.toBoolean() }.orElse(false).get()
+def windowsIconFile = file('packaging/Windows/ATCS.ico')
 
 // Application entry point for Gradle run and packaged launchers.
 application {
@@ -222,6 +223,13 @@ runtime {
         if (windowsConsoleMode) {
             imageOptions += ['--win-console']
             installerOptions += ['--win-console']
+        }
+        if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+            // Add standard Windows launch points so the installed app is reachable from Start menu and desktop.
+            installerOptions += ['--win-menu', '--win-shortcut', '--win-menu-group', 'ATContentStudio']
+            // Reuse the bundled Windows ICO for the launcher and installer branding.
+            imageOptions += ['--icon', windowsIconFile.absolutePath]
+            installerOptions += ['--icon', windowsIconFile.absolutePath]
         }
         // Allow an explicit override for alternate installer targets such as MSI.
         if (installerTypeOverride != null) {

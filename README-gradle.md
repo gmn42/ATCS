@@ -61,3 +61,5 @@ This uses the Shadow jar as input and generates the app image under the Gradle b
 - Source roots include `src`, `hacked-libtiled`, `minify`, and `siphash-zackehh/src/main/java`.
 - `hacked-libtiled/tiled/io/resources/map.dtd` is copied into the runtime resources so TMX loading works.
 - The build currently uses a Gradle-managed JDK 21 toolchain so `jlink` can run without a hard-coded path.
+- Windows installers include Start Menu and desktop shortcuts.
+- Windows packaging uses `packaging/Windows/ATCS.ico` for the installer and launcher icon.
