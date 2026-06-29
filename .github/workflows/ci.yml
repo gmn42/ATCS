@@ -2,8 +2,8 @@ name: CI Build
 
 on:
   push:
-    branches: [ main, master, gradle-support ]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
