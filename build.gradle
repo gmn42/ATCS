@@ -43,6 +43,7 @@ def runtimeJdk = javaToolchains.launcherFor {
 }.get().metadata.installationPath.asFile
 
 def installerTypeOverride = providers.gradleProperty('installerTypeOverride').orNull
+def windowsConsoleMode = providers.gradleProperty('windowsConsoleMode').map { it.toBoolean() }.orElse(false).get()
 
 // Application entry point for Gradle run and packaged launchers.
 application {
@@ -218,6 +219,10 @@ runtime {
 
         imageName = "ATContentStudio"
         installerName = "ATContentStudio-${appVersion}"
+        if (windowsConsoleMode) {
+            imageOptions += ['--win-console']
+            installerOptions += ['--win-console']
+        }
         // Allow an explicit override for alternate installer targets such as MSI.
         if (installerTypeOverride != null) {
             installerType = installerTypeOverride

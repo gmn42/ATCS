@@ -32,10 +32,10 @@ jobs:
           $wixBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Build EXE installer
-        run: .\gradlew.bat packageExe --no-daemon
+        run: .\gradlew.bat packageExe -PwindowsConsoleMode=true --no-daemon
 
       - name: Build MSI installer
-        run: .\gradlew.bat packageMsi --no-daemon
+        run: .\gradlew.bat packageMsi -PwindowsConsoleMode=true --no-daemon
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
