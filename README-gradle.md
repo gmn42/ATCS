@@ -38,7 +38,7 @@ On Windows, build installers with:
 .\gradlew.bat packageMsi
 ```
 
-Windows installer outputs are written under `build/distributions/`. The helper archive tasks copy them to `build/distribution/`.
+Windows installer outputs are written under `build/distributions/`.
 ### JPackage
 
 To build a native `jpackage` installer or app image for the current platform:
