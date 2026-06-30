@@ -229,8 +229,8 @@ runtime {
         ]
         // Installer naming configuration
 
-        imageName = "AT Content Studio"
-        installerName = "ATContentStudio"
+        imageName = "Andor's Trail Content Studio"
+        installerName = "Andor's Trail Content Studio"
         if (windowsConsoleMode) {
             imageOptions += ['--win-console']
             installerOptions += ['--win-console']
@@ -239,7 +239,7 @@ runtime {
             // Add standard Windows launch points so the installed app is reachable from Start menu and desktop.
             installerOptions += [
                     '--win-menu',       // Add to the Start menu
-                    '--win-menu-group', 'AT Content Studio',
+                    '--win-menu-group', "Andor's Trail Content Studio",
                     '--win-shortcut',   // Add as a desktop shortcut
                     '--win-shortcut-prompt',
                     '--win-dir-chooser', // Request installation directory
