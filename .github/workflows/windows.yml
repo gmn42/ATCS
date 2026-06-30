@@ -37,14 +37,10 @@ jobs:
       - name: Build MSI installer
         run: .\gradlew.bat packageMsi -PwindowsConsoleMode=true --no-daemon
 
-      - name: Upload EXE artifact
+      - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
-          name: atcs-exe
-          path: build/jpackage/*.exe
-
-      - name: Upload MSI artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: atcs-msi
-          path: build/jpackage/*.msi
+          name: atcs-installers
+          path: |
+            build/jpackage/*.exe
+            build/jpackage/*.msi

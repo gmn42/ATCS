@@ -102,6 +102,19 @@ shadowJar {
     from('res/ATCS_latest')
 }
 
+// Copy the shadow jar to a stable location for the IDE run configuration.
+tasks.register('prepareIdeRunJar', Copy) {
+    group = 'distribution'
+    description = 'Copies the Shadow JAR to build/ide-run/ATCS.jar for IDE launching.'
+
+    dependsOn tasks.named('shadowJar')
+
+    into(layout.buildDirectory.dir('ide-run'))
+    from(tasks.named('shadowJar')) {
+        rename { 'ATCS.jar' }
+    }
+}
+
 // Collect the thin jar plus runtime jars into build/libs for jlink/jpackage.
 tasks.register('collectRuntimeLibs', Copy) {
     group = 'build'
@@ -110,7 +123,7 @@ tasks.register('collectRuntimeLibs', Copy) {
     // ensure the project's thin jar is built first
     dependsOn tasks.named('jar')
 
-    into("$buildDir/libs")
+    into(layout.buildDirectory.dir('libs'))
     from(tasks.named('jar')) {
         into ''
     }
@@ -173,7 +186,6 @@ tasks.register('packageZip', Zip) {
     description = 'Builds a zip archive similar to packaging/package.sh.'
 
     dependsOn tasks.named('prepareDistCommon')
-    //archiveBaseName.set('ATCS')
     archiveVersion.set(appVersion)
     archiveClassifier.set('')
     destinationDirectory = layout.buildDirectory.dir('distributions')
@@ -188,16 +200,8 @@ tasks.named('assemble') {
     dependsOn tasks.named('shadowJar')
 }
 
-// Make build produce both the distributable zip and the jpackage image.
-tasks.named('build') {
-    dependsOn tasks.named('jpackage')
-}
-
 // Configure the runtime image and jpackage installer output.
 runtime {
-    // Use the Gradle-managed JDK so jlink has a full toolchain without a hard-coded path.
-    javaHome = runtimeJdk
-
     // Strips debugging info and compresses the bundled runtime image to save space
     options = ['--strip-debug', '--compress=2', '--no-header-files', '--no-man-pages']
 
