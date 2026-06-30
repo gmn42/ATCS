@@ -22,7 +22,7 @@ repositories {
 
 // Local jars are checked into lib/ and used as implementation/test dependencies.
 dependencies {
-    implementation fileTree(dir: 'lib', include: ['*.jar'])
+    implementation fileTree(dir: 'lib', include: ['*.jar'], exclude: ['junit-*.jar', '*-sources.jar'])
 
     testImplementation fileTree(dir: 'lib', include: ['junit-*.jar'])
 }
@@ -186,6 +186,7 @@ tasks.register('packageZip', Zip) {
     description = 'Builds a zip archive similar to packaging/package.sh.'
 
     dependsOn tasks.named('prepareDistCommon')
+    archiveBaseName.set('ATCS')
     archiveVersion.set(appVersion)
     archiveClassifier.set('')
     destinationDirectory = layout.buildDirectory.dir('distributions')
@@ -267,45 +268,37 @@ runtime {
 // Build a Windows MSI installer without changing the default installer type.
 tasks.register('packageMsi', GradleBuild) {
     group = 'distribution'
-    description = 'Builds the Windows MSI installer.'
+    description = 'Builds the Windows MSI installer and archives it to build/distributions.'
     dir = projectDir
     tasks = ['jpackage']
     startParameter.projectProperties.put('installerTypeOverride', 'msi')
+
+    doLast {
+        copy {
+            from(layout.buildDirectory.dir('jpackage')) {
+                include '*.msi'
+            }
+            into(layout.buildDirectory.dir('distributions'))
+        }
+    }
 }
 
 // Build a Windows EXE installer without changing the default installer type.
 tasks.register('packageExe', GradleBuild) {
     group = 'distribution'
-    description = 'Builds the Windows EXE installer.'
+    description = 'Builds the Windows EXE installer and archives it to build/distributions.'
     dir = projectDir
     tasks = ['jpackage']
     startParameter.projectProperties.put('installerTypeOverride', 'exe')
-}
 
-// Preserve the EXE installer before another jpackage run clears build/jpackage.
-tasks.register('archiveWindowsExeInstaller', Copy) {
-    group = 'distribution'
-    description = 'Copies the Windows EXE installer out of build/jpackage.'
-
-    dependsOn tasks.named('packageExe')
-
-    from(layout.buildDirectory.dir('jpackage')) {
-        include '*.exe'
+    doLast {
+        copy {
+            from(layout.buildDirectory.dir('jpackage')) {
+                include '*.exe'
+            }
+            into(layout.buildDirectory.dir('distributions'))
+        }
     }
-    into(layout.buildDirectory.dir('installers'))
-}
-
-// Preserve the MSI installer before another jpackage run clears build/jpackage.
-tasks.register('archiveWindowsMsiInstaller', Copy) {
-    group = 'distribution'
-    description = 'Copies the Windows MSI installer out of build/jpackage.'
-
-    dependsOn tasks.named('packageMsi')
-
-    from(layout.buildDirectory.dir('jpackage')) {
-        include '*.msi'
-    }
-    into(layout.buildDirectory.dir('installers'))
 }
 
 //tasks.register('buildFlatpak', Exec) {

@@ -46,10 +46,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: atcs-exe
-          path: build/installers/*.exe
+          path: build/distrubution/*.exe
 
       - name: Upload MSI artifact
         uses: actions/upload-artifact@v4
         with:
           name: atcs-msi
-          path: build/installers/*.msi
+          path: build/distribution/*.msi
