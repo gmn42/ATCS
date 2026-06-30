@@ -30,25 +30,19 @@ jobs:
           $wixBin = $candle.Directory.FullName
           $wixBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Build EXE installer
-        run: .\gradlew.bat packageExe -PwindowsConsoleMode=true --no-daemon
+      - name: Build and Package Windows Installer
+        run: .\gradlew.bat packageWindowsExe --no-daemon
 
-      - name: Preserve EXE installer
-        run: .\gradlew.bat archiveWindowsExeInstaller --no-daemon
+      - name: Build and Package Windows MSI Installer
+        run: .\gradlew.bat packageWindowsMsi --no-daemon
 
-      - name: Build MSI installer
-        run: .\gradlew.bat packageMsi -PwindowsConsoleMode=true --no-daemon
-
-      - name: Preserve MSI installer
-        run: .\gradlew.bat archiveWindowsMsiInstaller --no-daemon
-
-      - name: Upload EXE artifact
+      - name: Upload EXE artifact (ends up in separate artifact .zip)
         uses: actions/upload-artifact@v4
         with:
           name: atcs-exe
           path: build/distrubution/*.exe
 
-      - name: Upload MSI artifact
+      - name: Upload MSI artifact (ends up in separate artifact .zip)
         uses: actions/upload-artifact@v4
         with:
           name: atcs-msi
