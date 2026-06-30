@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  windows-installers:
+  windows-installer:
     runs-on: windows-latest
 
     steps:
