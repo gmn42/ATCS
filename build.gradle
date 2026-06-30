@@ -200,6 +200,11 @@ tasks.named('assemble') {
     dependsOn tasks.named('shadowJar')
 }
 
+// Ensure the fat jar exists before jpackage runs.
+tasks.named('jpackage') {
+    dependsOn tasks.named('shadowJar')
+}
+
 // Configure the runtime image and jpackage installer output.
 runtime {
     // Strips debugging info and compresses the bundled runtime image to save space
@@ -267,10 +272,30 @@ tasks.register('packageExe', GradleBuild) {
     startParameter.projectProperties.put('installerTypeOverride', 'exe')
 }
 
-// Ensure the fat jar exists before jpackage runs.
-tasks.named('jpackage') {
-    dependsOn tasks.named('shadowJar')
+// Preserve the EXE installer before another jpackage run clears build/jpackage.
+tasks.register('archiveWindowsExeInstaller', Copy) {
+    group = 'distribution'
+    description = 'Copies the Windows EXE installer out of build/jpackage.'
 
+    dependsOn tasks.named('packageExe')
+
+    from(layout.buildDirectory.dir('jpackage')) {
+        include '*.exe'
+    }
+    into(layout.buildDirectory.dir('installers'))
+}
+
+// Preserve the MSI installer before another jpackage run clears build/jpackage.
+tasks.register('archiveWindowsMsiInstaller', Copy) {
+    group = 'distribution'
+    description = 'Copies the Windows MSI installer out of build/jpackage.'
+
+    dependsOn tasks.named('packageMsi')
+
+    from(layout.buildDirectory.dir('jpackage')) {
+        include '*.msi'
+    }
+    into(layout.buildDirectory.dir('installers'))
 }
 
 //tasks.register('buildFlatpak', Exec) {

@@ -34,17 +34,23 @@ jobs:
       - name: Build EXE installer
         run: .\gradlew.bat packageExe -PwindowsConsoleMode=true --no-daemon
 
+      - name: Preserve EXE installer
+        run: .\gradlew.bat archiveWindowsExeInstaller --no-daemon
+
       - name: Build MSI installer
         run: .\gradlew.bat packageMsi -PwindowsConsoleMode=true --no-daemon
+
+      - name: Preserve MSI installer
+        run: .\gradlew.bat archiveWindowsMsiInstaller --no-daemon
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: atcs-exe
-          path: build/jpackage/*.exe
+          path: build/installers/*.exe
 
       - name: Upload MSI artifact
         uses: actions/upload-artifact@v4
         with:
           name: atcs-msi
-          path: build/jpackage/*.msi
+          path: build/installers/*.msi
