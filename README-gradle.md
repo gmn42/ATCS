@@ -17,7 +17,6 @@ This runs the default build and produces two outputs in `build/libs`:
 * `ATContentStudio-<version>.jar` - the conventional ("thin") jar without support libraries.
 * `ATContentStudio-<version>-all.jar` - the "fat" jar with support libraries, suitable for running with `java -jar`
 
-
 ### Run the app
 ```sh
 ./gradlew run
