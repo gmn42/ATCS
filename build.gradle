@@ -229,7 +229,7 @@ runtime {
         ]
         // Installer naming configuration
 
-        imageName = "ATContentStudio"
+        imageName = "AT Content Studio"
         installerName = "ATContentStudio"
         if (windowsConsoleMode) {
             imageOptions += ['--win-console']
@@ -239,11 +239,11 @@ runtime {
             // Add standard Windows launch points so the installed app is reachable from Start menu and desktop.
             installerOptions += [
                     '--win-menu',       // Add to the Start menu
-                    '--win-menu-group', 'ATContentStudio',
-                   // '--win-shortcut',   // Add as a desktop shortcut
-                   // '--win-shortcut-prompt',
-                   // '--win-dir-chooser', // Request installation directory
-                   // '--win-upgrade-uuid', '1b6f9c02-2751-4444-a42f-ef2d8fe65dc6',
+                    '--win-menu-group', 'AT Content Studio',
+                    '--win-shortcut',   // Add as a desktop shortcut
+                    '--win-shortcut-prompt',
+                    '--win-dir-chooser', // Request installation directory
+                    '--win-upgrade-uuid', '1b6f9c02-2751-4444-a42f-ef2d8fe65dc6',
             ]
             // Reuse the bundled Windows ICO for the launcher and installer branding.
             imageOptions += ['--icon', windowsIconFile.absolutePath]
