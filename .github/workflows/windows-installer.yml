@@ -33,14 +33,14 @@ jobs:
       - name: Build and Package Windows Installer
         run: .\gradlew.bat packageWindowsExe --no-daemon
 
-      - name: Build and Package Windows MSI Installer
-        run: .\gradlew.bat packageWindowsMsi --no-daemon
-
       - name: Upload EXE artifact (ends up in separate artifact .zip)
         uses: actions/upload-artifact@v4
         with:
           name: atcs-exe
           path: build/distrubutions/*.exe
+
+      - name: Build and Package Windows MSI Installer
+        run: .\gradlew.bat packageWindowsMsi --no-daemon
 
       - name: Upload MSI artifact (ends up in separate artifact .zip)
         uses: actions/upload-artifact@v4
