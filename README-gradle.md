@@ -31,14 +31,16 @@ This runs the default build and produces two outputs in `build/libs`:
 ## Packages
 ### Windows
 
-On Windows, build installers with:
+Windows installers are built using the [Wix3 Toolset](https://github.com/wixtoolset/wix3/releases), which must be installed on the build system.
+
+Build the installers with:
 
 ```powershell
 .\gradlew.bat packageExe
 .\gradlew.bat packageMsi
 ```
 
-Windows installer outputs are written under `build/distributions/`.
+Windows installer outputs are packaged under `build/distributions/`.
 ### JPackage
 
 To build a native `jpackage` installer or app image for the current platform:
