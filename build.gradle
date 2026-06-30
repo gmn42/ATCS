@@ -245,7 +245,6 @@ runtime {
                     '--win-shortcut-prompt',
                     '--win-dir-chooser', // Request installation directory
                     '--win-upgrade-uuid', '1b6f9c02-2751-4444-a42f-ef2d8fe65dc6',
-                    '--win-per-user-install', 'false'
             ]
             // Reuse the bundled Windows ICO for the launcher and installer branding.
             imageOptions += ['--icon', windowsIconFile.absolutePath]
