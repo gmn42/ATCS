@@ -37,10 +37,10 @@ java {
 }
 
 // Use the Gradle-managed JDK so jlink has a full toolchain without a hard-coded path.
-def runtimeJdk = javaToolchains.launcherFor {
-    languageVersion.set(JavaLanguageVersion.of(21))
-    vendor.set(JvmVendorSpec.ADOPTIUM)
-}.get().metadata.installationPath.asFile
+//def runtimeJdk = javaToolchains.launcherFor {
+//    languageVersion.set(JavaLanguageVersion.of(21))
+//    vendor.set(JvmVendorSpec.ADOPTIUM)
+//}.get().metadata.installationPath.asFile
 
 def installerTypeOverride = providers.gradleProperty('installerTypeOverride').orNull
 def windowsConsoleMode = providers.gradleProperty('windowsConsoleMode').map { it.toBoolean() }.orElse(false).get()
