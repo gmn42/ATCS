@@ -29,10 +29,10 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Environment variable set to: $VERSION"
 
-      - name: Build Shadow JAR and ZIP
+      - name: Build Zip
         shell: bash
         run: |
-          echo "Building shadow JAR and ZIP for version: ${{ env.VERSION }}"
+          echo "Building ZIP for version: ${{ env.VERSION }}"
           ./gradlew packageZip --no-daemon
           echo "Created artifacts:"
           ls -la build/distributions/ATCS-${{ env.VERSION }}.zip
@@ -47,7 +47,9 @@ jobs:
             ./build/distributions/ATCS-${{ env.VERSION }}*.zip
 
       - name: 'Install makensis (apt)'
-        run: sudo apt update && sudo apt install -y nsis nsis-pluginapi
+        run: |
+          apt-get update
+          apt-get install -y nsis nsis-pluginapi
         continue-on-error: true
 
       - name: Create Windows-Installer with NSIS
@@ -72,6 +74,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install DEB tools
+        run: |
+          apt-get update
+          apt-get install -y fakeroot
 
       - name: Build Linux DEB
         run: ./gradlew --no-daemon packageLinuxDeb
