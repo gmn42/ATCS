@@ -246,7 +246,6 @@ runtime {
                     '--linux-shortcut',
                     '--linux-package-name', 'andors-trail-content-studio',
                     '--linux-menu-group', 'Programming',
-                    '--linux-rpm-license-type', 'GPLv2',
                     '--linux-app-category', 'Programming',
             ]
         }
@@ -282,6 +281,27 @@ tasks.register('packageLinuxRpm', Copy) {
 
     from(layout.buildDirectory.dir('jpackage')) {
         include '*.rpm'
+    }
+    into(layout.buildDirectory.dir('distributions'))
+}
+
+// Build a Linux DEB installer without changing the default installer type.
+tasks.register('buildLinuxDeb', Exec) {
+    group = 'distribution'
+    description = 'Builds the Linux DEB installer.'
+    workingDir = projectDir
+    commandLine('./gradlew', '--no-daemon', 'jpackage', '-PinstallerTypeOverride=deb')
+}
+
+// Preserve the DEB installer before another jpackage run clears build/jpackage.
+tasks.register('packageLinuxDeb', Copy) {
+    group = 'distribution'
+    description = 'Copies the Linux DEB installer out of build/jpackage.'
+
+    dependsOn tasks.named('buildLinuxDeb')
+
+    from(layout.buildDirectory.dir('jpackage')) {
+        include '*.deb'
     }
     into(layout.buildDirectory.dir('distributions'))
 }

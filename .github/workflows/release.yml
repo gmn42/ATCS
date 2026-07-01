@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-linux:
+  build-linux-zip:
     runs-on: ubuntu-latest
 
     steps:
@@ -49,7 +49,26 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: |
-            ./build/distributions/ATCS-${{ env.VERSION }}.zip
+            ./build/distributions/ATCS-${{ env.VERSION }}*.zip
+
+  build-legacy-exe:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get Version
+        id: get_version
+        shell: bash
+        run: |
+          echo "Reading version from file:"
+          cat res/ATCS_latest
+          echo ""
+          VERSION=$(tr -d '[:space:]' < "res/ATCS_latest")
+          VERSION="${VERSION#v}"
+          echo "Processed version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Environment variable set to: $VERSION"
 
       - name: 'Install makensis (apt)'
         run: sudo apt update && sudo apt install -y nsis nsis-pluginapi
@@ -70,6 +89,43 @@ jobs:
           tag_name: ${{ github.event.release.tag_name }}
           files: ./packaging/ATCS_${{ env.VERSION }}_Setup.exe
         continue-on-error: true
+
+  build-linux-deb:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get Version
+        id: get_version
+        shell: bash
+        run: |
+          echo "Reading version from file:"
+          cat res/ATCS_latest
+          echo ""
+          VERSION=$(tr -d '[:space:]' < "res/ATCS_latest")
+          VERSION="${VERSION#v}"
+          echo "Processed version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Environment variable set to: $VERSION"
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build Linux DEB
+        run: ./gradlew --no-daemon packageLinuxDeb
+
+      - name: Upload Release Assets (deb)
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            build/distributions/*.deb
 
   build-windows:
     runs-on: windows-latest
@@ -116,19 +172,18 @@ jobs:
             build/distributions/*.msi
 
   build-fedora-rpm:
-    runs-on: [self-hosted, linux, fedora]
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Build Linux RPM
-        run: ./gradlew --no-daemon packageLinuxRpm
+      - name: Build Linux RPM in Fedora container
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            fedora:41 \
+            bash -lc 'dnf install -y java-21-openjdk-devel rpm-build rpm git findutils tar unzip && ./gradlew --no-daemon packageLinuxRpm'
 
       - name: Upload Release Assets (rpm)
         uses: softprops/action-gh-release@v1

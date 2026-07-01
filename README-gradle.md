@@ -58,6 +58,14 @@ To build a Linux RPM installer with desktop/menu shortcuts:
 
 The RPM output is written to `build/distributions/`.
 
+To build a Linux DEB installer:
+
+```sh
+./gradlew packageLinuxDeb
+```
+
+The DEB output is written to `build/distributions/`.
+
 ### Zip Distribution
 To build an old-style ZIP distribution using the fat jar with icon and start script (requires a compatible JVM installed on target system):
 
