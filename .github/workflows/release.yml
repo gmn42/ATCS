@@ -11,6 +11,7 @@ on:
 jobs:
   build-linux-zip:
     runs-on: ubuntu-latest
+    container: eclipse-temurin:21-jdk
 
     steps:
       - uses: actions/checkout@v4
@@ -27,12 +28,6 @@ jobs:
           echo "Processed version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Environment variable set to: $VERSION"
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
 
       - name: Build Shadow JAR and ZIP
         shell: bash
@@ -50,25 +45,6 @@ jobs:
           tag_name: ${{ github.event.release.tag_name }}
           files: |
             ./build/distributions/ATCS-${{ env.VERSION }}*.zip
-
-  build-legacy-exe:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Get Version
-        id: get_version
-        shell: bash
-        run: |
-          echo "Reading version from file:"
-          cat res/ATCS_latest
-          echo ""
-          VERSION=$(tr -d '[:space:]' < "res/ATCS_latest")
-          VERSION="${VERSION#v}"
-          echo "Processed version: $VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Environment variable set to: $VERSION"
 
       - name: 'Install makensis (apt)'
         run: sudo apt update && sudo apt install -y nsis nsis-pluginapi
@@ -92,28 +68,10 @@ jobs:
 
   build-linux-deb:
     runs-on: ubuntu-latest
+    container: eclipse-temurin:21-jdk
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Get Version
-        id: get_version
-        shell: bash
-        run: |
-          echo "Reading version from file:"
-          cat res/ATCS_latest
-          echo ""
-          VERSION=$(tr -d '[:space:]' < "res/ATCS_latest")
-          VERSION="${VERSION#v}"
-          echo "Processed version: $VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Environment variable set to: $VERSION"
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
 
       - name: Build Linux DEB
         run: ./gradlew --no-daemon packageLinuxDeb
@@ -126,6 +84,30 @@ jobs:
           tag_name: ${{ github.event.release.tag_name }}
           files: |
             build/distributions/*.deb
+
+  build-linux-rpm:
+    runs-on: ubuntu-latest
+    container: eclipse-temurin:21-jdk
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install RPM tools
+        run: |
+          apt-get update
+          apt-get install -y rpm git findutils tar unzip
+
+      - name: Build Linux RPM
+        run: ./gradlew --no-daemon packageLinuxRpm
+
+      - name: Upload Release Assets (rpm)
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            build/distributions/*.rpm
 
   build-windows:
     runs-on: windows-latest
@@ -170,27 +152,3 @@ jobs:
           tag_name: ${{ github.event.release.tag_name }}
           files: |
             build/distributions/*.msi
-
-  build-rpm:
-    runs-on: ubuntu-latest
-    container: eclipse-temurin:21-jdk
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install RPM tools
-        run: |
-          apt-get update
-          apt-get install -y rpm git findutils tar unzip
-
-      - name: Build Linux RPM
-        run: ./gradlew --no-daemon packageLinuxRpm
-
-      - name: Upload Release Assets (rpm)
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: |
-            build/distributions/*.rpm
