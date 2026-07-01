@@ -10,7 +10,7 @@ plugins {
 
 // Project identity and versioning.
 group = 'com.gpl.rpg.atcontentstudio'
-version = file('res/ATCS_latest').text.trim().replaceFirst(/^v/, '')
+version = file('res/ATCS_latest').text.trim().replaceFirst(/^v/, '') // No letters in version numbers
 
 def mainClassNameValue = 'com.gpl.rpg.atcontentstudio.ATContentStudio'
 def appVersion = version.toString()
@@ -35,12 +35,6 @@ java {
     }
     withSourcesJar()
 }
-
-// Use the Gradle-managed JDK so jlink has a full toolchain without a hard-coded path.
-//def runtimeJdk = javaToolchains.launcherFor {
-//    languageVersion.set(JavaLanguageVersion.of(21))
-//    vendor.set(JvmVendorSpec.ADOPTIUM)
-//}.get().metadata.installationPath.asFile
 
 def installerTypeOverride = providers.gradleProperty('installerTypeOverride').orNull
 def windowsConsoleMode = providers.gradleProperty('windowsConsoleMode').map { it.toBoolean() }.orElse(false).get()
@@ -208,11 +202,8 @@ tasks.named('jpackage') {
 
 // Configure the runtime image and jpackage installer output.
 runtime {
-    // Use the Gradle-managed JDK so jlink has a full toolchain without a hard-coded path.
-    //javaHome = runtimeJdk
-
     // Strips debugging info and compresses the bundled runtime image to save space
-    options = ['--strip-debug', '--compress=2', '--no-header-files', '--no-man-pages']
+    options = ['--strip-debug', '--compress=zip-6', '--no-header-files', '--no-man-pages']
 
     // Explicitly tells the plugin to use the generated fat JAR as the main input
     jpackage {
@@ -244,7 +235,7 @@ runtime {
                     '--win-shortcut',   // Add as a desktop shortcut
                     '--win-shortcut-prompt',
                     '--win-dir-chooser', // Request installation directory
-                    '--win-upgrade-uuid', '1b6f9c02-2751-4444-a42f-ef2d8fe65dc6',
+                    '--win-upgrade-uuid', '1b6f9c02-2751-4444-a42f-ef2d8fe65dc6', // GUID for tracking version upgrades - don't change
             ]
             // Reuse the bundled Windows ICO for the launcher and installer branding.
             imageOptions += ['--icon', windowsIconFile.absolutePath]
@@ -266,21 +257,19 @@ runtime {
 }
 
 // Build a Windows MSI installer without changing the default installer type.
-tasks.register('buildWindowsMsi', GradleBuild) {
+tasks.register('buildWindowsMsi', Exec) {
     group = 'distribution'
     description = 'Builds the Windows MSI installer.'
-    dir = projectDir
-    tasks = ['jpackage']
-    startParameter.projectProperties.put('installerTypeOverride', 'msi')
+    workingDir = projectDir
+    commandLine('cmd', '/c', 'gradlew.bat', 'jpackage', '--no-daemon', '-PinstallerTypeOverride=msi')
 }
 
 // Build a Windows EXE installer without changing the default installer type.
-tasks.register('buildWindowsExe', GradleBuild) {
+tasks.register('buildWindowsExe', Exec) {
     group = 'distribution'
     description = 'Builds the Windows EXE installer.'
-    dir = projectDir
-    tasks = ['jpackage']
-    startParameter.projectProperties.put('installerTypeOverride', 'exe')
+    workingDir = projectDir
+    commandLine('cmd', '/c', 'gradlew.bat', 'jpackage', '--no-daemon', '-PinstallerTypeOverride=exe')
 }
 
 // Preserve the EXE installer before another jpackage run clears build/jpackage.

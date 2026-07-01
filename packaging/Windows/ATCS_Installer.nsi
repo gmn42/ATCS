@@ -4,9 +4,18 @@
 !define TRAINER_VERSION "0.1.5"
 !define JAVA_BIN "java"
 !define ATCS_SOURCE_DIR "..\..\"
+!ifndef ATCS_JAR_PATH
+!define ATCS_JAR_PATH "..\..\build\libs\ATContentStudio-${VERSION}-all.jar"
+!endif
+!ifndef ATCS_ICON_PATH
+!define ATCS_ICON_PATH "ATCS.ico"
+!endif
+!ifndef ATCS_OUTPUT_FILE
+!define ATCS_OUTPUT_FILE "..\ATCS_${VERSION}_Setup.exe"
+!endif
 
 Name "Andor's Trail Content Studio ${VERSION}"
-OutFile "..\ATCS_${VERSION}_Setup.exe"
+OutFile "${ATCS_OUTPUT_FILE}"
 InstallDir "$PROGRAMFILES\ATCS\"
 
 ;SetCompressor /SOLID /FINAL lzma
@@ -21,8 +30,8 @@ Var StartMenuFolder
 
 
 ;Start Menu Folder Page Configuration
-!define MUI_STARTMENUPAGE_REGISTRY_ROOT "HKCU" 
-!define MUI_STARTMENUPAGE_REGISTRY_KEY "Software\ATCS" 
+!define MUI_STARTMENUPAGE_REGISTRY_ROOT "HKCU"
+!define MUI_STARTMENUPAGE_REGISTRY_KEY "Software\ATCS"
 !define MUI_STARTMENUPAGE_REGISTRY_VALUENAME "ATCS"
 
 !define MUI_HEADERIMAGE
@@ -55,8 +64,8 @@ Section install
 
   ;--- Create in ...\packaging\common\   ATCS.cmd  ATCT.ico  ATCS.jar
   SetOutPath $INSTDIR
-  file "ATCS.ico"
-  file "${ATCS_SOURCE_DIR}\packaging\common\ATCS.jar"
+  file /oname=ATCS.ico "${ATCS_ICON_PATH}"
+  file /oname=ATCS.jar "${ATCS_JAR_PATH}"
 
   Call GetJRE
   Pop $R0
