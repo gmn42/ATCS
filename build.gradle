@@ -254,123 +254,49 @@ runtime {
             jp.appVersion = macosAppVersion
         }
         // Allow an explicit override for alternate installer targets such as MSI.
-        if (installerTypeOverride != null) {
-            installerType = installerTypeOverride
-        } else if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
-            installerType = "exe"
-        } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
-            installerType = "dmg"
+        if (installerTypeOverride == null) {
+            installerType = 'app-image'
+            skipInstaller = true
         } else {
-            installerType = "deb"
+            installerType = installerTypeOverride
         }
-        //skipInstaller = true
-        //installerType = "app-image"
     }
 }
 
-// Build a Linux RPM installer without changing the default installer type.
-tasks.register('buildLinuxRpm', Exec) {
-    group = 'distribution'
-    description = 'Builds the Linux RPM installer.'
-    workingDir = projectDir
-    commandLine('./gradlew', 'jpackage', '--no-daemon', '-PinstallerTypeOverride=rpm')
-}
+def installerTaskSpecs = [
+        [platform: 'Linux',   format: 'RPM', type: 'rpm', buildTask: 'buildLinuxRpm',   packageTask: 'packageLinuxRpm'],
+        [platform: 'Linux',   format: 'DEB', type: 'deb', buildTask: 'buildLinuxDeb',   packageTask: 'packageLinuxDeb'],
+        [platform: 'macOS',   format: 'DMG', type: 'dmg', buildTask: 'buildMacosDmg',   packageTask: 'packageMacosDmg'],
+        [platform: 'Windows', format: 'MSI', type: 'msi', buildTask: 'buildWindowsMsi', packageTask: 'packageWindowsMsi', windows: true],
+        [platform: 'Windows', format: 'EXE', type: 'exe', buildTask: 'buildWindowsExe', packageTask: 'packageWindowsExe', windows: true],
+]
 
-// Preserve the RPM installer before another jpackage run clears build/jpackage.
-tasks.register('packageLinuxRpm', Copy) {
-    group = 'distribution'
-    description = 'Copies the Linux RPM installer out of build/jpackage.'
+installerTaskSpecs.each { spec ->
+    // Build an installer without changing the default installer type.
+    tasks.register(spec.buildTask, Exec) {
+        group = 'distribution'
+        description = "Builds the ${spec.platform} ${spec.format} installer."
+        workingDir = projectDir
 
-    dependsOn tasks.named('buildLinuxRpm')
-
-    from(layout.buildDirectory.dir('jpackage')) {
-        include '*.rpm'
+        if (spec.windows) {
+            commandLine('cmd', '/c', 'gradlew.bat', 'jpackage', '--no-daemon', "-PinstallerTypeOverride=${spec.type}")
+        } else {
+            commandLine('./gradlew', '--no-daemon', 'jpackage', "-PinstallerTypeOverride=${spec.type}")
+        }
     }
-    into(layout.buildDirectory.dir('distributions'))
-}
 
-// Build a Linux DEB installer without changing the default installer type.
-tasks.register('buildLinuxDeb', Exec) {
-    group = 'distribution'
-    description = 'Builds the Linux DEB installer.'
-    workingDir = projectDir
-    commandLine('./gradlew', '--no-daemon', 'jpackage', '-PinstallerTypeOverride=deb')
-}
+    // Preserve the installer before another jpackage run clears build/jpackage.
+    tasks.register(spec.packageTask, Copy) {
+        group = 'distribution'
+        description = "Copies the ${spec.platform} ${spec.format} installer out of build/jpackage."
 
-// Preserve the DEB installer before another jpackage run clears build/jpackage.
-tasks.register('packageLinuxDeb', Copy) {
-    group = 'distribution'
-    description = 'Copies the Linux DEB installer out of build/jpackage.'
+        dependsOn tasks.named(spec.buildTask)
 
-    dependsOn tasks.named('buildLinuxDeb')
-
-    from(layout.buildDirectory.dir('jpackage')) {
-        include '*.deb'
+        from(layout.buildDirectory.dir('jpackage')) {
+            include "*.${spec.type}"
+        }
+        into(layout.buildDirectory.dir('distributions'))
     }
-    into(layout.buildDirectory.dir('distributions'))
-}
-
-// Build a macOS DMG installer without changing the default installer type.
-tasks.register('buildMacosDmg', Exec) {
-    group = 'distribution'
-    description = 'Builds the macOS DMG installer.'
-    workingDir = projectDir
-    commandLine('./gradlew', '--no-daemon', 'jpackage', '-PinstallerTypeOverride=dmg')
-}
-
-// Preserve the DMG installer before another jpackage run clears build/jpackage.
-tasks.register('packageMacosDmg', Copy) {
-    group = 'distribution'
-    description = 'Copies the macOS DMG installer out of build/jpackage.'
-
-    dependsOn tasks.named('buildMacosDmg')
-
-    from(layout.buildDirectory.dir('jpackage')) {
-        include '*.dmg'
-    }
-    into(layout.buildDirectory.dir('distributions'))
-}
-
-// Build a Windows MSI installer without changing the default installer type.
-tasks.register('buildWindowsMsi', Exec) {
-    group = 'distribution'
-    description = 'Builds the Windows MSI installer.'
-    workingDir = projectDir
-    commandLine('cmd', '/c', 'gradlew.bat', 'jpackage', '--no-daemon', '-PinstallerTypeOverride=msi')
-}
-
-// Build a Windows EXE installer without changing the default installer type.
-tasks.register('buildWindowsExe', Exec) {
-    group = 'distribution'
-    description = 'Builds the Windows EXE installer.'
-    workingDir = projectDir
-    commandLine('cmd', '/c', 'gradlew.bat', 'jpackage', '--no-daemon', '-PinstallerTypeOverride=exe')
-}
-
-// Preserve the EXE installer before another jpackage run clears build/jpackage.
-tasks.register('packageWindowsExe', Copy) {
-    group = 'distribution'
-    description = 'Copies the Windows EXE installer out of build/jpackage.'
-
-    dependsOn tasks.named('buildWindowsExe')
-
-    from(layout.buildDirectory.dir('jpackage')) {
-        include '*.exe'
-    }
-    into(layout.buildDirectory.dir('distributions'))
-}
-
-// Preserve the MSI installer before another jpackage run clears build/jpackage.
-tasks.register('packageWindowsMsi', Copy) {
-    group = 'distribution'
-    description = 'Copies the Windows MSI installer out of build/jpackage.'
-
-    dependsOn tasks.named('buildWindowsMsi')
-
-    from(layout.buildDirectory.dir('jpackage')) {
-        include '*.msi'
-    }
-    into(layout.buildDirectory.dir('distributions'))
 }
 
 //tasks.register('buildFlatpak', Exec) {
