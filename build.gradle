@@ -305,6 +305,27 @@ tasks.register('packageLinuxDeb', Copy) {
     into(layout.buildDirectory.dir('distributions'))
 }
 
+// Build a macOS DMG installer without changing the default installer type.
+tasks.register('buildMacosDmg', Exec) {
+    group = 'distribution'
+    description = 'Builds the macOS DMG installer.'
+    workingDir = projectDir
+    commandLine('./gradlew', '--no-daemon', 'jpackage', '-PinstallerTypeOverride=dmg')
+}
+
+// Preserve the DMG installer before another jpackage run clears build/jpackage.
+tasks.register('packageMacosDmg', Copy) {
+    group = 'distribution'
+    description = 'Copies the macOS DMG installer out of build/jpackage.'
+
+    dependsOn tasks.named('buildMacosDmg')
+
+    from(layout.buildDirectory.dir('jpackage')) {
+        include '*.dmg'
+    }
+    into(layout.buildDirectory.dir('distributions'))
+}
+
 // Build a Windows MSI installer without changing the default installer type.
 tasks.register('buildWindowsMsi', Exec) {
     group = 'distribution'

@@ -159,3 +159,28 @@ jobs:
           tag_name: ${{ github.event.release.tag_name }}
           files: |
             build/distributions/*.msi
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build macOS DMG
+        run: ./gradlew --no-daemon packageMacosDmg
+
+      - name: Upload Release Assets (dmg)
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            build/distributions/*.dmg
+
