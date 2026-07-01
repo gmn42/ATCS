@@ -13,12 +13,13 @@ Andor's Trail Content Studio is a Java/Swing editor for creating and maintaining
 
 ## Getting started as a content creator
 
-1. Clone a copy of the Andor's Trail game source from the [GitHub repository](https://github.com/AndorsTrailRelease/andors-trail).
-2. Run ATCS and choose or create a workspace folder. The workspace stores your ATCS projects and local preferences.
-3. Use **File > Create Project...** and point it at the `AndorsTrail` folder in the game repo. For normal content work, choose **Real game data**.
-4. Open the project in the left tree and edit or create game data, maps, worldmap segments, sprites, or other resources.
-5. Save changed elements as you work. ATCS tracks created and altered resources separately from the original source data.
-6. Reach out to the [Andor's Trail community](#community) to discuss adding your content to the game.
+1. Download and install an [ATCS release](https://github.com/AndorsTrailRelease/ATCS/releases) for your system.
+2. Clone a copy of the Andor's Trail game source from the [GitHub repository](https://github.com/AndorsTrailRelease/andors-trail).
+3. Run ATCS and choose or create a workspace folder. The workspace stores your ATCS projects and local preferences.
+4. Use **File > Create Project...** and point it at the `AndorsTrail` folder in the cloned game repo. For normal content work, choose **Real game data**.
+5. Open the project in the left tree and edit or create game data, maps, worldmap segments, sprites, or other resources.
+6. Save changed elements as you work. ATCS tracks created and altered resources separately from the original source data.
+7. Reach out to the [Andor's Trail community](#community) to discuss adding your content to the game.
 
 ## Build Requirements
 
@@ -62,11 +63,10 @@ Or run the built jar directly:
 java -jar build/libs/ATContentStudio-<version>-all.jar
 ```
 
-See the [README-gradle.md]() file for more details and build options, including packaging installers.
+See [README-gradle.md](README-gradle.md) for more details and build options, including packaging installers.
 
 ## Community
 
 - **Official Forum:** [andorstrail.com](https://andorstrail.com/) - The primary hub for announcements, help, and discussion.
 - **Discord Server:** [https://discord.gg/FgwXdy6](https://discord.gg/FgwXdy6) - Join the real-time discussion with players and content creators.
 - **GitHub Repository:** [AndorsTrailRelease/andors-trail](https://github.com/AndorsTrailRelease/andors-trail) - The source code for the Andor's Trail game.
-
