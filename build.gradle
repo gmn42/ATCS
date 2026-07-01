@@ -31,7 +31,6 @@ dependencies {
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(21))
-        vendor.set(JvmVendorSpec.ADOPTIUM)
     }
     withSourcesJar()
 }
@@ -178,7 +177,7 @@ tasks.register('packageZip', Zip) {
     dependsOn tasks.named('prepareDistCommon')
     archiveBaseName.set('ATCS')
     archiveVersion.set(appVersion)
-    archiveClassifier.set('jar-runner')
+    archiveClassifier.set('')
     destinationDirectory = layout.buildDirectory.dir('distributions')
 
     from(distCommonDirProvider) {

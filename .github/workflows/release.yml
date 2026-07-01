@@ -171,19 +171,20 @@ jobs:
           files: |
             build/distributions/*.msi
 
-  build-fedora-rpm:
+  build-rpm:
     runs-on: ubuntu-latest
+    container: eclipse-temurin:21-jdk
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Linux RPM in Fedora container
+      - name: Install RPM tools
         run: |
-          docker run --rm \
-            -v "$PWD:/workspace" \
-            -w /workspace \
-            fedora:41 \
-            bash -lc 'dnf install -y java-21-openjdk-devel rpm-build rpm git findutils tar unzip && ./gradlew --no-daemon packageLinuxRpm'
+          apt-get update
+          apt-get install -y rpm git findutils tar unzip
+
+      - name: Build Linux RPM
+        run: ./gradlew --no-daemon packageLinuxRpm
 
       - name: Upload Release Assets (rpm)
         uses: softprops/action-gh-release@v1
