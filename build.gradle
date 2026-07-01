@@ -13,7 +13,9 @@ group = 'com.gpl.rpg.atcontentstudio'
 version = file('res/ATCS_latest').text.trim().replaceFirst(/^v/, '') // No letters in version numbers
 
 def mainClassNameValue = 'com.gpl.rpg.atcontentstudio.ATContentStudio'
-def appVersion = version.toString()
+def releaseVersion = version.toString()
+// MacOS doesn't like leading zeros for version numbers, so we bump it to 10
+def macosAppVersion = releaseVersion.replaceFirst(/^0\./, '10.')
 
 // Artifact and dependency repositories.
 repositories {
@@ -176,7 +178,7 @@ tasks.register('packageZip', Zip) {
 
     dependsOn tasks.named('prepareDistCommon')
     archiveBaseName.set('ATCS')
-    archiveVersion.set(appVersion)
+    archiveVersion.set(releaseVersion)
     archiveClassifier.set('')
     destinationDirectory = layout.buildDirectory.dir('distributions')
 
@@ -201,7 +203,7 @@ runtime {
     options = ['--strip-debug', '--compress=zip-6', '--no-header-files', '--no-man-pages']
 
     // Explicitly tells the plugin to use the generated fat JAR as the main input
-    jpackage {
+    jpackage { jp ->
 
         // Use the jar produced by the shadowJar task (provider mapped to filename)
         mainJar = tasks.named('shadowJar').map { it.archiveFileName.get() }.get()
@@ -247,6 +249,9 @@ runtime {
                     '--linux-menu-group', 'Programming',
                     '--linux-app-category', 'Programming',
             ]
+        } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+            println "macOS jpackage appVersion = ${macosAppVersion}"
+            jp.appVersion = macosAppVersion
         }
         // Allow an explicit override for alternate installer targets such as MSI.
         if (installerTypeOverride != null) {
