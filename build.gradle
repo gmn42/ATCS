@@ -39,6 +39,7 @@ java {
 def installerTypeOverride = providers.gradleProperty('installerTypeOverride').orNull
 def windowsConsoleMode = providers.gradleProperty('windowsConsoleMode').map { it.toBoolean() }.orElse(false).get()
 def windowsIconFile = file('packaging/Windows/ATCS.ico')
+def linuxIconFile = file('packaging/common/ATCS.png')
 
 // Application entry point for Gradle run and packaged launchers.
 application {
@@ -152,7 +153,7 @@ tasks.named('processResources') {
 def distCommonDirProvider = layout.buildDirectory.dir('dist/common')
 
 // Prepare the common distribution layout consumed by the zip package.
-tasks.register('prepareDistCommon', Copy) {
+tasks.register('prepareDistCommon', Sync) {
     group = 'distribution'
     description = 'Prepares the common distribution directory.'
 
@@ -167,11 +168,6 @@ tasks.register('prepareDistCommon', Copy) {
     from('packaging/common') {
         include 'ATCS.sh', 'ATCS.cmd', 'ATCS.ico'
     }
-
-    from('lib') {
-        include '*.jar'
-        into 'lib'
-    }
 }
 
 // Build the distributable zip archive.
@@ -182,11 +178,11 @@ tasks.register('packageZip', Zip) {
     dependsOn tasks.named('prepareDistCommon')
     archiveBaseName.set('ATCS')
     archiveVersion.set(appVersion)
-    archiveClassifier.set('')
+    archiveClassifier.set('jar-runner')
     destinationDirectory = layout.buildDirectory.dir('distributions')
 
     from(distCommonDirProvider) {
-        into 'common'
+        into 'atcs'
     }
 }
 
@@ -240,6 +236,19 @@ runtime {
             // Reuse the bundled Windows ICO for the launcher and installer branding.
             imageOptions += ['--icon', windowsIconFile.absolutePath]
             installerOptions += ['--icon', windowsIconFile.absolutePath]
+        } else if (org.gradle.internal.os.OperatingSystem.current().isLinux()) {
+            // Use the packaged Linux icon and create desktop/menu shortcuts for native installers.
+            imageName = "Andors Trail Content Studio"
+            installerName = "Andors Trail Content Studio"
+            imageOptions += ['--icon', linuxIconFile.absolutePath]
+            installerOptions += [
+                    '--icon', linuxIconFile.absolutePath,
+                    '--linux-shortcut',
+                    '--linux-package-name', 'andors-trail-content-studio',
+                    '--linux-menu-group', 'Programming',
+                    '--linux-rpm-license-type', 'GPLv2',
+                    '--linux-app-category', 'Programming',
+            ]
         }
         // Allow an explicit override for alternate installer targets such as MSI.
         if (installerTypeOverride != null) {
@@ -254,6 +263,27 @@ runtime {
         //skipInstaller = true
         //installerType = "app-image"
     }
+}
+
+// Build a Linux RPM installer without changing the default installer type.
+tasks.register('buildLinuxRpm', Exec) {
+    group = 'distribution'
+    description = 'Builds the Linux RPM installer.'
+    workingDir = projectDir
+    commandLine('./gradlew', 'jpackage', '--no-daemon', '-PinstallerTypeOverride=rpm')
+}
+
+// Preserve the RPM installer before another jpackage run clears build/jpackage.
+tasks.register('packageLinuxRpm', Copy) {
+    group = 'distribution'
+    description = 'Copies the Linux RPM installer out of build/jpackage.'
+
+    dependsOn tasks.named('buildLinuxRpm')
+
+    from(layout.buildDirectory.dir('jpackage')) {
+        include '*.rpm'
+    }
+    into(layout.buildDirectory.dir('distributions'))
 }
 
 // Build a Windows MSI installer without changing the default installer type.

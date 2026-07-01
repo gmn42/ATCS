@@ -50,6 +50,14 @@ To build a native `jpackage` installer or app image for the current platform:
 ```
 The output will be left in `build/jpackage`.  This has not been tested on macOS, and may require other build tools installed depending on platform.
 
+To build a Linux RPM installer with desktop/menu shortcuts:
+
+```sh
+./gradlew packageLinuxRpm
+```
+
+The RPM output is written to `build/distributions/`.
+
 ### Zip Distribution
 To build an old-style ZIP distribution using the fat jar with icon and start script (requires a compatible JVM installed on target system):
 
