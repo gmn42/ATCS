@@ -15,6 +15,15 @@ version = file('res/ATCS_latest').text.trim().replaceFirst(/^v/, '') // No lette
 def mainClassNameValue = 'com.gpl.rpg.atcontentstudio.ATContentStudio'
 def releaseVersion = version.toString()
 
+// These define the various installer types and platforms with their build target
+def installerTaskSpecs = [
+        [platform: 'Linux',   format: 'RPM', type: 'rpm', buildTask: 'packageLinuxRpm'],
+        [platform: 'Linux',   format: 'DEB', type: 'deb', buildTask: 'packageLinuxDeb'],
+        [platform: 'macOS',   format: 'DMG', type: 'dmg', buildTask: 'packageMacosDmg'],
+        [platform: 'Windows', format: 'MSI', type: 'msi', buildTask: 'packageWindowsMsi'],
+        [platform: 'Windows', format: 'EXE', type: 'exe', buildTask: 'packageWindowsExe'],
+]
+
 // Artifact and dependency repositories.
 repositories {
     mavenCentral()
@@ -35,7 +44,6 @@ java {
     withSourcesJar()
 }
 
-def installerTypeOverride = providers.gradleProperty('installerTypeOverride').orNull
 def windowsConsoleMode = providers.gradleProperty('windowsConsoleMode').map { it.toBoolean() }.orElse(false).get()
 def windowsIconFile = file('packaging/Windows/ATCS.ico')
 def linuxIconFile = file('packaging/common/ATCS.png')
@@ -195,14 +203,60 @@ tasks.named('jpackage') {
     dependsOn tasks.named('shadowJar')
 }
 
-// Configure the runtime image and jpackage installer output.
+
+// Set up the profiles for building the installers for various systems
+def nativePackaging = {
+    def profile = [ // Defaults - this may get overridden per-platform (e.g, Linux)
+            imageName: "Andor's Trail Content Studio",  // Apostrophe works on Windows
+            installerName: "Andors-Trail-Content-Studio", // Github doesn't like spaces in release names
+            imageOptions: [],
+            installerOptions: [],
+            appVersion: releaseVersion,
+    ]
+
+    if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+        if (windowsConsoleMode) {
+            profile.imageOptions += ['--win-console']
+            profile.installerOptions += ['--win-console']
+        }
+        profile.installerOptions += [
+                '--win-menu',       // Add to the Start menu
+                '--win-menu-group', profile.imageName,
+                '--win-shortcut',   // Add as a desktop shortcut
+                '--win-shortcut-prompt',
+                '--win-dir-chooser', // Request installation directory
+                '--win-upgrade-uuid', '1b6f9c02-2751-4444-a42f-ef2d8fe65dc6', // GUID for tracking version upgrades - don't change
+        ]
+        profile.imageOptions += ['--icon', windowsIconFile.absolutePath]
+        profile.installerOptions += ['--icon', windowsIconFile.absolutePath]
+    } else if (org.gradle.internal.os.OperatingSystem.current().isLinux()) {
+        // No apostrophe (') because jpackage embeds imageName in RPM shell scriptlets; apostrophes break those scripts.
+        profile.imageName = "Andors Trail Content Studio"
+        profile.imageOptions += ['--icon', linuxIconFile.absolutePath]
+        profile.installerOptions += [
+                '--icon', linuxIconFile.absolutePath,
+                '--linux-shortcut',
+                '--linux-package-name', 'andors-trail-content-studio',
+                '--linux-menu-group', 'Programming',
+                '--linux-app-category', 'Programming',
+        ]
+    } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+        // MacOS doesn't like version zero, so bump the major version number +10.
+        def parts = releaseVersion.tokenize('.')
+        parts[0] = ((parts[0] as int) + 10).toString()
+        profile.appVersion = parts.join('.')
+    }
+    profile
+}.call()
+
+// Configure Badass Runtime to build the runtime image only
+// (we run jpackage again manually to produce the individual installer packages)
 runtime {
     // Strips debugging info and compresses the bundled runtime image to save space
     options = ['--strip-debug', '--compress=zip-6', '--no-header-files', '--no-man-pages']
 
-    // Explicitly tells the plugin to use the generated fat JAR as the main input
-    jpackage { jp ->
-
+    // We call jpackage here to make a runtime, but the installers are built seperately
+    jpackage {
         // Use the jar produced by the shadowJar task (provider mapped to filename)
         mainJar = tasks.named('shadowJar').map { it.archiveFileName.get() }.get()
         mainClass = application.mainClass.get()
@@ -214,90 +268,46 @@ runtime {
             'java.net.http',
             'java.sql'
         ]
-        // Installer naming configuration
-
-        imageName = "Andor's Trail Content Studio"
-        installerName = "Andors-Trail-Content-Studio"
-        if (windowsConsoleMode) {
-            imageOptions += ['--win-console']
-            installerOptions += ['--win-console']
-        }
-        if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
-            // Add standard Windows launch points so the installed app is reachable from Start menu and desktop.
-            installerOptions += [
-                    '--win-menu',       // Add to the Start menu
-                    '--win-menu-group', imageName,
-                    '--win-shortcut',   // Add as a desktop shortcut
-                    '--win-shortcut-prompt',
-                    '--win-dir-chooser', // Request installation directory
-                    '--win-upgrade-uuid', '1b6f9c02-2751-4444-a42f-ef2d8fe65dc6', // GUID for tracking version upgrades - don't change
-            ]
-            // Reuse the bundled Windows ICO for the launcher and installer branding.
-            imageOptions += ['--icon', windowsIconFile.absolutePath]
-            installerOptions += ['--icon', windowsIconFile.absolutePath]
-        } else if (org.gradle.internal.os.OperatingSystem.current().isLinux()) {
-            // Use the packaged Linux icon and create desktop/menu shortcuts for native installers.
-            // No apostrophe (') because jpackage embeds imageName in RPM shell scriptlets; apostrophes break those scripts.
-            imageName = "Andors Trail Content Studio"
-            imageOptions += ['--icon', linuxIconFile.absolutePath]
-            installerOptions += [
-                    '--icon', linuxIconFile.absolutePath,
-                    '--linux-shortcut',
-                    '--linux-package-name', 'andors-trail-content-studio',
-                    '--linux-menu-group', 'Programming',
-                    '--linux-app-category', 'Programming',
-            ]
-        } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
-            // MacOS doesn't like leading zeros for version numbers, so we bump it by 10
-            def parts = releaseVersion.tokenize('.')
-            parts[0] = ((parts[0] as int) + 10).toString()
-            def macosAppVersion = parts.join('.')
-
-            println "macOS jpackage appVersion = ${macosAppVersion}"
-            jp.appVersion = macosAppVersion
-        }
-        // Allow an explicit override for alternate installer targets such as MSI.
-        if (installerTypeOverride == null) {
-            installerType = 'app-image'
-            skipInstaller = true
-        } else {
-            installerType = installerTypeOverride
-        }
+        imageName = nativePackaging.imageName
+        imageOptions += nativePackaging.imageOptions
+        skipInstaller = true
     }
 }
 
-def installerTaskSpecs = [
-        [platform: 'Linux',   format: 'RPM', type: 'rpm', buildTask: 'buildLinuxRpm',   packageTask: 'packageLinuxRpm'],
-        [platform: 'Linux',   format: 'DEB', type: 'deb', buildTask: 'buildLinuxDeb',   packageTask: 'packageLinuxDeb'],
-        [platform: 'macOS',   format: 'DMG', type: 'dmg', buildTask: 'buildMacosDmg',   packageTask: 'packageMacosDmg'],
-        [platform: 'Windows', format: 'MSI', type: 'msi', buildTask: 'buildWindowsMsi', packageTask: 'packageWindowsMsi', windows: true],
-        [platform: 'Windows', format: 'EXE', type: 'exe', buildTask: 'buildWindowsExe', packageTask: 'packageWindowsExe', windows: true],
-]
+// Helper to actually run the jpackage build for a given installer type
+def jpackageExecutable = {
+    def launcher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }.get()
+    def binaryName = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'jpackage.exe' : 'jpackage'
+    def installationDir = launcher.metadata.installationPath.asFile
+    installationDir.toPath().resolve("bin/${binaryName}").toFile().absolutePath
+}
 
+// Set up the packageXXX targets to compose the built app image into an installer
 installerTaskSpecs.each { spec ->
-    // Build an installer without changing the default installer type.
     tasks.register(spec.buildTask, Exec) {
         group = 'distribution'
         description = "Builds the ${spec.platform} ${spec.format} installer."
         workingDir = projectDir
 
-        if (spec.windows) {
-            commandLine('cmd', '/c', 'gradlew.bat', 'jpackage', '--no-daemon', "-PinstallerTypeOverride=${spec.type}")
-        } else {
-            commandLine('./gradlew', '--no-daemon', 'jpackage', "-PinstallerTypeOverride=${spec.type}")
+        dependsOn tasks.named('jpackageImage')
+
+        def jpackageArgs = [
+                '--type', spec.type,
+                '--app-image', layout.buildDirectory.dir("jpackage/${nativePackaging.imageName}").get().asFile.absolutePath,
+                '--dest', layout.buildDirectory.dir('distributions').get().asFile.absolutePath,
+        ]
+
+        if (nativePackaging.appVersion != null) {
+            if (spec.format == 'DMG') {
+                println "macOS jpackage appVersion = ${nativePackaging.appVersion}"
+            }
+            jpackageArgs += ['--app-version', nativePackaging.appVersion]
         }
-    }
 
-    // Preserve the installer before another jpackage run clears build/jpackage.
-    tasks.register(spec.packageTask, Copy) {
-        group = 'distribution'
-        description = "Copies the ${spec.platform} ${spec.format} installer out of build/jpackage."
+        jpackageArgs += nativePackaging.installerOptions
 
-        dependsOn tasks.named(spec.buildTask)
-
-        from(layout.buildDirectory.dir('jpackage')) {
-            include "*.${spec.type}"
-        }
-        into(layout.buildDirectory.dir('distributions'))
+        commandLine jpackageExecutable(), *jpackageArgs
     }
 }
