@@ -15,11 +15,6 @@ version = file('res/ATCS_latest').text.trim().replaceFirst(/^v/, '') // No lette
 def mainClassNameValue = 'com.gpl.rpg.atcontentstudio.ATContentStudio'
 def releaseVersion = version.toString()
 
-// MacOS doesn't like leading zeros for version numbers, so we bump it by 10
-def parts = releaseVersion.tokenize('.')
-parts[0] = ((parts[0] as int) + 10).toString()
-def macosAppVersion = parts.join('.')
-
 // Artifact and dependency repositories.
 repositories {
     mavenCentral()
@@ -253,6 +248,11 @@ runtime {
                     '--linux-app-category', 'Programming',
             ]
         } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+            // MacOS doesn't like leading zeros for version numbers, so we bump it by 10
+            def parts = releaseVersion.tokenize('.')
+            parts[0] = ((parts[0] as int) + 10).toString()
+            def macosAppVersion = parts.join('.')
+
             println "macOS jpackage appVersion = ${macosAppVersion}"
             jp.appVersion = macosAppVersion
         }
@@ -301,34 +301,3 @@ installerTaskSpecs.each { spec ->
         into(layout.buildDirectory.dir('distributions'))
     }
 }
-
-//tasks.register('buildFlatpak', Exec) {
-//    group = 'distribution'
-//    description = 'Wraps the Badass Runtime jpackage output into a native Flatpak bundle'
-//
-//    // 1. Force the Badass Runtime plugin to finish building the app-image first
-//    dependsOn tasks.named('jpackageImage')
-//
-//    // 2. Define output and source paths matching your project directory
-//    def flatpakBuildDir = layout.buildDirectory.dir('flatpak-build')
-//    def flatpakRepoDir  = layout.buildDirectory.dir('flatpak-repo')
-//    def manifestFile    = "${projectDir}/packaging/flatpak/com.gpl.rpg.atcontentstudio.yaml"
-//
-//    // 3. Environment cleanup before execution to prevent cached overlay bugs
-//    doFirst {
-//        project.delete(flatpakBuildDir)
-//        //if (!Files.exists(Paths.get(manifestFile))) {
-//        //    throw new GradleException("Flatpak manifest missing! Please verify file exists at: ${manifestFile}")
-//        //}
-//    }
-//
-//    // 4. Call the local native builder utility directly
-//    commandLine(
-//            'flatpak-builder',
-//            '--force-clean',
-//            "--repo=${flatpakRepoDir.get().asFile.absolutePath}",
-//            flatpakBuildDir.get().asFile.absolutePath,
-//            manifestFile
-//
-//    )
-//}
