@@ -46,7 +46,7 @@ To build a Windows EXE installer:
 
 To build a Windows MSI installer:
 ```powershell
-.\gradlew.bat packageWindowsExe
+.\gradlew.bat packageWindowsMsi
 ```
 
 The installer output is written to `build/distributions/`.

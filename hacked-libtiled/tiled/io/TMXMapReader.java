@@ -38,7 +38,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
-import java.io.StringReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -913,7 +912,7 @@ public class TMXMapReader
 
     private class MapEntityResolver implements EntityResolver
     {
-        public InputSource resolveEntity(String publicId, String systemId) {
+        public InputSource resolveEntity(String publicId, String systemId) throws SAXException {
             if ("http://mapeditor.org/dtd/1.0/map.dtd".equals(systemId) ||
             	"https://mapeditor.org/dtd/1.0/map.dtd".equals(systemId)) {
                 InputStream mapDtd = TMXMapReader.class.getResourceAsStream(
@@ -924,7 +923,7 @@ public class TMXMapReader
                     return source;
                 }
             }
-            return new InputSource(new StringReader(""));
+            throw new SAXException("Unexpected external entity: " + systemId);
         }
     }
 
