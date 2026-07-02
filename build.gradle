@@ -237,7 +237,7 @@ runtime {
             installerOptions += ['--icon', windowsIconFile.absolutePath]
         } else if (org.gradle.internal.os.OperatingSystem.current().isLinux()) {
             // Use the packaged Linux icon and create desktop/menu shortcuts for native installers.
-            // jpackage embeds imageName in RPM shell scriptlets; apostrophes break those scripts.
+            // No apostrophe (') because jpackage embeds imageName in RPM shell scriptlets; apostrophes break those scripts.
             imageName = "Andors Trail Content Studio"
             imageOptions += ['--icon', linuxIconFile.absolutePath]
             installerOptions += [
