@@ -297,9 +297,12 @@ installerTaskSpecs.each { spec ->
 
         dependsOn tasks.named('jpackageImage')
 
+        def appImageName = org.gradle.internal.os.OperatingSystem.current().isMacOsX() ?
+                "${nativePackaging.imageName}.app" :
+                nativePackaging.imageName
         def jpackageArgs = [
                 '--type', spec.type,
-                '--app-image', layout.buildDirectory.dir("app-image/${nativePackaging.imageName}").get().asFile.absolutePath,
+                '--app-image', layout.buildDirectory.dir("app-image/${appImageName}").get().asFile.absolutePath,
                 '--dest', layout.buildDirectory.dir('distributions').get().asFile.absolutePath,
         ]
 
