@@ -256,7 +256,7 @@ runtime {
     options = ['--strip-debug', '--compress=zip-6', '--no-header-files', '--no-man-pages']
 
     // We call jpackage here to make a runtime, but the installers are built seperately
-    jpackage {
+    jpackage { jp ->
         // Use the jar produced by the shadowJar task (provider mapped to filename)
         mainJar = tasks.named('shadowJar').map { it.archiveFileName.get() }.get()
         mainClass = application.mainClass.get()
@@ -270,6 +270,9 @@ runtime {
         ]
         imageName = nativePackaging.imageName
         imageOptions += nativePackaging.imageOptions
+        if (nativePackaging.appVersion != null) {
+            appVersion = nativePackaging.appVersion
+        }
         skipInstaller = true
     }
 }
@@ -308,6 +311,6 @@ installerTaskSpecs.each { spec ->
 
         jpackageArgs += nativePackaging.installerOptions
 
-        commandLine jpackageExecutable(), *jpackageArgs
+        commandLine([jpackageExecutable()] + jpackageArgs)
     }
 }
