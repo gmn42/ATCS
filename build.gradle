@@ -14,8 +14,11 @@ version = file('res/ATCS_latest').text.trim().replaceFirst(/^v/, '') // No lette
 
 def mainClassNameValue = 'com.gpl.rpg.atcontentstudio.ATContentStudio'
 def releaseVersion = version.toString()
-// MacOS doesn't like leading zeros for version numbers, so we bump it to 10
-def macosAppVersion = releaseVersion.replaceFirst(/^0\./, '10.')
+
+// MacOS doesn't like leading zeros for version numbers, so we bump it by 10
+def parts = releaseVersion.tokenize('.')
+parts[0] = ((parts[0] as int) + 10).toString()
+def macosAppVersion = parts.join('.')
 
 // Artifact and dependency repositories.
 repositories {
