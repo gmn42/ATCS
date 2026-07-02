@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
       - name: Get Version
         id: get_version
         shell: bash
@@ -75,6 +78,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
       - name: Install DEB tools
         run: |
           apt-get update
@@ -98,6 +104,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
 
       - name: Install RPM tools
         run: |
