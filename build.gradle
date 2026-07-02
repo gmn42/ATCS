@@ -268,6 +268,7 @@ runtime {
             'java.net.http',
             'java.sql'
         ]
+        outputDir = 'app-image'
         imageName = nativePackaging.imageName
         imageOptions += nativePackaging.imageOptions
         if (nativePackaging.appVersion != null) {
@@ -298,7 +299,7 @@ installerTaskSpecs.each { spec ->
 
         def jpackageArgs = [
                 '--type', spec.type,
-                '--app-image', layout.buildDirectory.dir("jpackage/${nativePackaging.imageName}").get().asFile.absolutePath,
+                '--app-image', layout.buildDirectory.dir("app-image/${nativePackaging.imageName}").get().asFile.absolutePath,
                 '--dest', layout.buildDirectory.dir('distributions').get().asFile.absolutePath,
         ]
 
