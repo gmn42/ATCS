@@ -58,13 +58,12 @@ sourceSets {
     main {
         java {
             setSrcDirs([
-                    'src/com',
-                    'src/net',
-                    'src/prefuse',
+                    'src',
                     'hacked-libtiled',
                     'minify',
                     'siphash-zackehh/src/main/java'
             ])
+            exclude('test/**')
         }
         resources {
             setSrcDirs([

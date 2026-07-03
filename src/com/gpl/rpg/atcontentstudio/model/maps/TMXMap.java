@@ -1,7 +1,10 @@
 package com.gpl.rpg.atcontentstudio.model.maps;
 
 import com.gpl.rpg.atcontentstudio.Notification;
-import com.gpl.rpg.atcontentstudio.model.*;
+import com.gpl.rpg.atcontentstudio.model.GameDataElement;
+import com.gpl.rpg.atcontentstudio.model.Project;
+import com.gpl.rpg.atcontentstudio.model.ProjectTreeNode;
+import com.gpl.rpg.atcontentstudio.model.SaveEvent;
 import com.gpl.rpg.atcontentstudio.model.GameSource.Type;
 import com.gpl.rpg.atcontentstudio.model.gamedata.GameDataSet;
 import com.gpl.rpg.atcontentstudio.model.gamedata.NPC;
@@ -251,7 +254,7 @@ public class TMXMap extends GameDataElement {
         try {
             TMXMapWriter writer = new TMXMapWriter();
             writer.settings.layerCompressionMethod = TMXMapWriter.Settings.LAYER_COMPRESSION_METHOD_ZLIB;
-            if (getDataType() == GameSource.Type.source) {
+            if (getDataType() == Type.source) {
                 writer.writeMap(tmxMap, baos, tmxFile.getAbsolutePath());
             } else {
                 writer.writeMap(tmxMap, baos, ((TMXMapSet) this.parent).mapFolder.getAbsolutePath() + File.separator + "placeholder.tmx");
