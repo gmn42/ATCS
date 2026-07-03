@@ -1,7 +1,6 @@
 package com.gpl.rpg.atcontentstudio.ui;
 
 import com.gpl.rpg.atcontentstudio.ATContentStudio;
-import com.gpl.rpg.atcontentstudio.Notification;
 import com.gpl.rpg.atcontentstudio.model.*;
 import com.gpl.rpg.atcontentstudio.model.gamedata.*;
 import com.gpl.rpg.atcontentstudio.model.maps.TMXMap;
