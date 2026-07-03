@@ -136,7 +136,6 @@ jobs:
         with:
           script-file: packaging/Windows/ATCS_Installer.nsi
           arguments: -DVERSION="${{ env.VERSION }}"
-        continue-on-error: true
 
       - name: Upload Release Assets (legacy exe)
         uses: softprops/action-gh-release@v3
@@ -145,7 +144,6 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: ./packaging/ATCS_${{ env.VERSION }}_Setup.exe
-        continue-on-error: true
 
   build-windows:
     runs-on: windows-latest
