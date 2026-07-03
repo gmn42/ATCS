@@ -7,6 +7,14 @@ on:
   release:
     types: [ created ]
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Release tag to upload assets to
+        required: false
+        type: string
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
 
 jobs:
   build-linux-zip:
@@ -41,11 +49,12 @@ jobs:
           ls -la build/distributions/ATCS-${{ env.VERSION }}.zip
 
       - name: Upload Release Assets (zip)
+        if: ${{ env.RELEASE_TAG != '' }}
         uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
             ./build/distributions/ATCS-${{ env.VERSION }}*.zip
 
@@ -68,11 +77,12 @@ jobs:
         run: ./gradlew --no-daemon packageLinuxDeb
 
       - name: Upload Release Assets (deb)
+        if: ${{ env.RELEASE_TAG != '' }}
         uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
             build/distributions/*.deb
 
@@ -95,11 +105,12 @@ jobs:
         run: ./gradlew --no-daemon packageLinuxRpm
 
       - name: Upload Release Assets (rpm)
+        if: ${{ env.RELEASE_TAG != '' }}
         uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
             build/distributions/*.rpm
 
@@ -141,11 +152,12 @@ jobs:
           arguments: -DVERSION="${{ env.VERSION }}" -DATCS_JAR_PATH="../../build/libs/ATContentStudio-${{ env.VERSION }}-all.jar" -DATCS_OUTPUT_FILE="../ATCS_${{ env.VERSION }}_Setup.exe"
 
       - name: Upload Release Assets (legacy exe)
+        if: ${{ env.RELEASE_TAG != '' }}
         uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           files: ./packaging/ATCS_${{ env.VERSION }}_Setup.exe
 
   build-windows:
@@ -176,20 +188,22 @@ jobs:
         run: .\gradlew.bat packageWindowsExe packageWindowsMsi --no-daemon
 
       - name: Upload Release Assets (exe)
+        if: ${{ env.RELEASE_TAG != '' }}
         uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
             build/distributions/*.exe
 
       - name: Upload Release Assets (msi)
+        if: ${{ env.RELEASE_TAG != '' }}
         uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
             build/distributions/*.msi
 
@@ -209,10 +223,11 @@ jobs:
         run: ./gradlew --no-daemon packageMacosDmg
 
       - name: Upload Release Assets (dmg)
+        if: ${{ env.RELEASE_TAG != '' }}
         uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
             build/distributions/*.dmg
