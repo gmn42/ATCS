@@ -80,7 +80,7 @@ The DMG output is written to `build/distributions/`.  Note that due to a platfor
 release version may not be '0', the MacOS release version is bumped by 10, so 10.7.1 is equivalent to 0.7.1.
 
 ### Zip Distribution
-To build an ZIP distribution using the fat jar with icon and start script (requires a compatible JVM installed on target system):
+To build a ZIP distribution using the fat jar with icon and start script (requires a compatible JVM installed on target system):
 
 ```sh
 ./gradlew packageZip

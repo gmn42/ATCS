@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: Release tag to upload assets to
+        description: (Optional) Release tag to upload assets to
         required: false
         type: string
 
