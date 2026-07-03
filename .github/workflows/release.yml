@@ -49,28 +49,6 @@ jobs:
           files: |
             ./build/distributions/ATCS-${{ env.VERSION }}*.zip
 
-      - name: 'Install makensis (apt)'
-        run: |
-          apt-get update
-          apt-get install -y nsis nsis-pluginapi
-        continue-on-error: true
-
-      - name: Create Windows-Installer with NSIS
-        uses: joncloud/makensis-action@v5.0
-        with:
-          script-file: packaging/Windows/ATCS_Installer.nsi
-          arguments: -DVERSION="${{ env.VERSION }}"
-        continue-on-error: true
-
-      - name: Upload Release Assets (legacy exe)
-        uses: softprops/action-gh-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: ./packaging/ATCS_${{ env.VERSION }}_Setup.exe
-        continue-on-error: true
-
   build-linux-deb:
     runs-on: ubuntu-latest
     container: eclipse-temurin:21-jdk
@@ -125,6 +103,51 @@ jobs:
           files: |
             build/distributions/*.rpm
 
+  build-legacy-exe:
+    runs-on: ubuntu-latest
+    container: eclipse-temurin:21-jdk
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Get Version
+        id: get_version
+        shell: bash
+        run: |
+          echo "Reading version from file:"
+          cat res/ATCS_latest
+          echo ""
+          VERSION=$(tr -d '[:space:]' < "res/ATCS_latest")
+          VERSION="${VERSION#v}"
+          echo "Processed version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Environment variable set to: $VERSION"
+
+      - name: Install makensis (apt)
+        run: |
+          apt-get update
+          apt-get install -y nsis nsis-pluginapi
+        continue-on-error: true
+
+      - name: Create Windows-Installer with NSIS
+        uses: joncloud/makensis-action@v5.0
+        with:
+          script-file: packaging/Windows/ATCS_Installer.nsi
+          arguments: -DVERSION="${{ env.VERSION }}"
+        continue-on-error: true
+
+      - name: Upload Release Assets (legacy exe)
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: ./packaging/ATCS_${{ env.VERSION }}_Setup.exe
+        continue-on-error: true
+
   build-windows:
     runs-on: windows-latest
 
@@ -141,12 +164,13 @@ jobs:
         shell: pwsh
         run: |
           choco install wixtoolset -y --no-progress
-          $candle = Get-ChildItem 'C:\Program Files*\WiX Toolset*' -Recurse -Filter candle.exe | Select-Object -First 1
-          if (-not $candle) {
-            throw 'WiX candle.exe was not found after installation.'
+          $candle = Get-Command candle.exe -ErrorAction SilentlyContinue
+          $light = Get-Command light.exe -ErrorAction SilentlyContinue
+          if (-not $candle -or -not $light) {
+            throw 'WiX Toolset was not found on PATH.'
           }
-          $wixBin = $candle.Directory.FullName
-          $wixBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          candle.exe -? | Out-Null
+          light.exe -? | Out-Null
 
       - name: Build Windows installers
         run: .\gradlew.bat packageWindowsExe packageWindowsMsi --no-daemon

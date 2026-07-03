@@ -33,7 +33,7 @@ repositories {
 dependencies {
     implementation fileTree(dir: 'lib', include: ['*.jar'], exclude: ['junit-*.jar', '*-sources.jar'])
 
-    testImplementation fileTree(dir: 'lib', include: ['junit-*.jar'])
+    testImplementation files('lib/junit-4.10.jar')
 }
 
 // Java toolchain and source jar settings.
@@ -58,7 +58,9 @@ sourceSets {
     main {
         java {
             setSrcDirs([
-                    'src',
+                    'src/com',
+                    'src/net',
+                    'src/prefuse',
                     'hacked-libtiled',
                     'minify',
                     'siphash-zackehh/src/main/java'
@@ -77,7 +79,7 @@ sourceSets {
 
     test {
         java {
-            setSrcDirs(['test'])
+            setSrcDirs(['src/test/java'])
         }
     }
 }
@@ -112,24 +114,6 @@ tasks.register('prepareIdeRunJar', Copy) {
     into(layout.buildDirectory.dir('ide-run'))
     from(tasks.named('shadowJar')) {
         rename { 'ATCS.jar' }
-    }
-}
-
-// Collect the thin jar plus runtime jars into build/libs for jlink/jpackage.
-tasks.register('collectRuntimeLibs', Copy) {
-    group = 'build'
-    description = 'Collect thin jar and runtime dependency jars into build/libs for jlink/jpackage'
-
-    // ensure the project's thin jar is built first
-    dependsOn tasks.named('jar')
-
-    into(layout.buildDirectory.dir('libs'))
-    from(tasks.named('jar')) {
-        into ''
-    }
-    from(configurations.runtimeClasspath) {
-        include '*.jar'
-        into ''
     }
 }
 
@@ -217,6 +201,7 @@ def nativePackaging = {
             profile.imageOptions += ['--win-console']
             profile.installerOptions += ['--win-console']
         }
+        // These options work for both .EXE and .MSI installers
         profile.installerOptions += [
                 '--win-menu',       // Add to the Start menu
                 '--win-menu-group', profile.imageName,

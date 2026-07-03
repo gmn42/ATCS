@@ -19,4 +19,4 @@ modules:
     sources:
       - type: dir
         # Point directly to where the Badass Runtime plugin deposits the app-image folder
-        path: ../../build/jpackage/ATContentStudio
+        path: '../../build/app-image/Andors Trail Content Studio'

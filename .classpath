@@ -8,7 +8,13 @@
 			<attribute name="resource" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry excluding="test/resources/" kind="src" output="build/classes/java/main" path="src">
+	<classpathentry kind="src" output="build/classes/java/test" path="src/test/java">
+		<attributes>
+			<attribute name="test" value="true"/>
+			<attribute name="gradle.buildServer" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry excluding="test/**" kind="src" output="build/classes/java/main" path="src">
 		<attributes>
 			<attribute name="gradle.buildServer" value="true"/>
 		</attributes>
