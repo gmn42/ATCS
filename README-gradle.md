@@ -30,7 +30,7 @@ This runs the default build and produces two outputs in `build/libs`:
 (Only very minimal testing has been implemented so far)
 
 ## Packaging
-Release packaging is done through the `release.yml` Github Action workflow, but can be done manually for testing.
+Release packaging is done through the `release.yml` GitHub Action workflow, but can be done manually for testing.
 Installers must be built on the target platform, and some native packaging tools must be installed locally.
 
 Packaged installer outputs are archived under `build/distributions/`.
