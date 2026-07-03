@@ -76,7 +76,7 @@ Section install
   FileWrite $9 '$\r$\n'
   FileWrite $9 'set "ATCS_DIR=%~dp0"$\r$\n'
   FileWrite $9 'set "MAX_MEM=1024M"$\r$\n'
-  FileWrite $9 'REM required minimum java version is 11$\r$\n'
+  FileWrite $9 'REM required minimum java version is 21$\r$\n'
   FileWrite $9 'set "JAVA=$R0"$\r$\n'
   FileWrite $9 'set "JAVA_OPTS=-DFONT_SCALE=1.0 -Dswing.aatext=true"$\r$\n'
   FileWrite $9 'set "ENV_FILE=%ATCS_DIR%ATCS.env.bat"$\r$\n'
