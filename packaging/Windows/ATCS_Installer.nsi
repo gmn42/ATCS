@@ -85,7 +85,7 @@ Section install
   FileWrite $9 '  call "%ENV_FILE%"$\r$\n'
   FileWrite $9 ') else ($\r$\n'
   FileWrite $9 '  echo REM set "MAX_MEM=%MAX_MEM%">"%ENV_FILE%"$\r$\n'
-  FileWrite $9 '  echo REM required minimum java version is 11$\r$\n'
+  FileWrite $9 '  echo REM required minimum java version is 21$\r$\n'
   FileWrite $9 '  echo REM set "JAVA=%JAVA%">>"%ENV_FILE%"$\r$\n'
   FileWrite $9 '  echo REM set "JAVA_OPTS=%JAVA_OPTS%">>"%ENV_FILE%"$\r$\n'
   FileWrite $9 '  echo.>>"%ENV_FILE%"$\r$\n'
