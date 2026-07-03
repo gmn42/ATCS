@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module external.linked.project.id="ATContentStudio:main" external.linked.project.path="$MODULE_DIR$/../.." external.root.project.path="$MODULE_DIR$/../.." external.system.id="GRADLE" external.system.module.group="com.gpl.rpg.atcontentstudio" external.system.module.type="sourceSet" external.system.module.version="0.7.1" type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <output url="file://$MODULE_DIR$/../../build/classes/java/main" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../../hacked-libtiled">
+      <sourceFolder url="file://$MODULE_DIR$/../../hacked-libtiled" isTestSource="false" />
+    </content>
+    <content url="file://$MODULE_DIR$/../../minify">
+      <sourceFolder url="file://$MODULE_DIR$/../../minify" isTestSource="false" />
+    </content>
+    <content url="file://$MODULE_DIR$/../../res">
+      <sourceFolder url="file://$MODULE_DIR$/../../res" type="java-resource" />
+    </content>
+    <content url="file://$MODULE_DIR$/../../siphash-zackehh/src/main">
+      <sourceFolder url="file://$MODULE_DIR$/../../siphash-zackehh/src/main/java" isTestSource="false" />
+    </content>
+    <content url="file://$MODULE_DIR$/../../src">
+      <sourceFolder url="file://$MODULE_DIR$/../../src" isTestSource="false" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module-library">
+      <library name="Gradle: json_simple-1.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../lib/json_simple-1.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: jide-oss.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../lib/jide-oss.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: prefuse.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../lib/prefuse.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: picocli-4.7.6.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../lib/picocli-4.7.6.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: jsoup-1.10.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../lib/jsoup-1.10.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: ui.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../lib/ui.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: rsyntaxtextarea.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../lib/rsyntaxtextarea.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Gradle: bsh-2.0b4.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../lib/bsh-2.0b4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+  </component>
+</module>

@@ -912,13 +912,19 @@ public class TMXMapReader
 
     private class MapEntityResolver implements EntityResolver
     {
-        public InputSource resolveEntity(String publicId, String systemId) {
-            if (systemId.equals("http://mapeditor.org/dtd/1.0/map.dtd") ||
-            	systemId.equals("https://mapeditor.org/dtd/1.0/map.dtd")) {
-                return new InputSource(TMXMapReader.class.getResourceAsStream(
-                        "resources/map.dtd"));
+        public InputSource resolveEntity(String publicId, String systemId) throws SAXException {
+            final String bundledDtdPath = "resources/map.dtd";
+            if ("http://mapeditor.org/dtd/1.0/map.dtd".equals(systemId) ||
+            	"https://mapeditor.org/dtd/1.0/map.dtd".equals(systemId)) {
+                InputStream mapDtd = TMXMapReader.class.getResourceAsStream(bundledDtdPath);
+                if (mapDtd != null) {
+                    InputSource source = new InputSource(mapDtd);
+                    source.setSystemId(systemId);
+                    return source;
+                }
+                throw new SAXException("Missing bundled DTD resource: " + bundledDtdPath);
             }
-            return null;
+            throw new SAXException("Unexpected external entity: " + systemId);
         }
     }
 
