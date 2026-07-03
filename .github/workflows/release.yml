@@ -130,7 +130,6 @@ jobs:
         run: |
           apt-get update
           apt-get install -y nsis nsis-pluginapi
-        continue-on-error: true
 
       - name: Create Windows-Installer with NSIS
         uses: joncloud/makensis-action@v5.0
