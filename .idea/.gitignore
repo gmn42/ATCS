@@ -24,5 +24,7 @@
 !.name
 # Keep shared run configuration settings.
 !runConfigurations.xml
+!runConfigurations/
+!runConfigurations/*.xml
 # Keep Git/VCS mapping settings.
 !vcs.xml
