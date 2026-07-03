@@ -88,7 +88,7 @@ To build an ZIP distribution using the fat jar with icon and start script (requi
 The zip file will be written to `build/distributions/ATCS-<version>.zip`
 
 ### JAR-only .EXE Installer (NSIS)
-The legacy jar-with-start-script installer is packaged directly in the Github release workflow, and is not performed via Gradle.
+The legacy jar-with-start-script installer is packaged directly in the GitHub release workflow, and is not performed via Gradle.
 
 ### Source Distribution
 
