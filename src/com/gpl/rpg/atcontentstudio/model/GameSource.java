@@ -2,7 +2,6 @@ package com.gpl.rpg.atcontentstudio.model;
 
 import com.gpl.rpg.atcontentstudio.io.JsonSerializable;
 import com.gpl.rpg.atcontentstudio.model.Project.ResourceSet;
-import com.gpl.rpg.atcontentstudio.model.gamedata.GameDataCategory;
 import com.gpl.rpg.atcontentstudio.model.gamedata.GameDataSet;
 import com.gpl.rpg.atcontentstudio.model.maps.TMXMapSet;
 import com.gpl.rpg.atcontentstudio.model.maps.Worldmap;

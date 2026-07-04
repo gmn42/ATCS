@@ -25,8 +25,13 @@ public final class Profiling {
         long start = enabled ? System.nanoTime() : 0L;
         increaseIndent();
         action.run();
-        if (enabled) {
-            printf("%s took %d ms", label, elapsedMillis(start));
+        try {
+            action.run();
+        }finally {
+            if(enabled) {
+                printf("%s took %d ms", label, elapsedMillis(start));
+            }
+            decreaseIndent();
         }
         decreaseIndent();
     }
