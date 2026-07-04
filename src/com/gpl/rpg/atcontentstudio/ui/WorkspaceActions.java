@@ -605,7 +605,7 @@ public class WorkspaceActions {
     };
 
     /**
-     * worspaceBusy routines -
+     * workspaceBusy routines -
      * Whether the workspace is currently busy (generally, load operation in progress)
      */
     private volatile boolean workspaceBusy = false;
