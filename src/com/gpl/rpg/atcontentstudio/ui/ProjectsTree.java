@@ -495,7 +495,7 @@ public class ProjectsTree extends JPanel {
 
         /**
          * Return child according to a sorted view of the parent's children.
-         * @param parent - The note whose children should be returned
+         * @param parent - The node whose children should be returned
          * @param index - The index of the child to return
          * @return - The object at the specified index
          */

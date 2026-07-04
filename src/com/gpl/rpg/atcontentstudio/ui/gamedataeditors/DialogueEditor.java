@@ -19,7 +19,6 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Comparator;
 
 public class DialogueEditor extends JSONElementEditor {
     private static final long serialVersionUID = 4140553240585599873L;

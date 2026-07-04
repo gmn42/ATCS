@@ -132,7 +132,7 @@ public class Project implements ProjectTreeNode, Serializable, JsonSerializable 
      * Create a new Project instance from scratch
      * @param w - Workspace we're attaching it to (becomes parent)
      * @param name - Name of the project (string)
-     * @param source - path to gate source repo
+     * @param source - path to game source repo
      * @param sourceSet - ResourceSet to use (gameData, debugData, or allFiles)
      */
     public Project(Workspace w, String name, File source, ResourceSet sourceSet){
@@ -243,23 +243,42 @@ public class Project implements ProjectTreeNode, Serializable, JsonSerializable 
      * @return - loaded Project instance if found, null otherwise
      */
     public static Project fromFolder(Workspace w, File projRoot) {
-        Project p;
-
         File fJson = new File(projRoot, Project.SETTINGS_FILE_JSON);
         if (fJson.exists()) {
-            p = new Project(w, fJson);
-        } else {
-            File f = new File(projRoot, Project.SETTINGS_FILE);
-            if (!f.exists()) {
-                Notification.addError("Unable to find " + SETTINGS_FILE + " for project " + projRoot.getName());
-                return null;
-            } else {
-                p = (Project) SettingsSave.loadInstance(f, "Project");
-                p.baseFolder = projRoot;
-            }
-            p.save();
+            return new Project(w, fJson);
         }
-        return p;
+
+        File legacySettingsFile = new File(projRoot, Project.SETTINGS_FILE);
+        if (legacySettingsFile.exists()) {
+            if (migrateLegacyProject(projRoot, legacySettingsFile)) {
+                return new Project(w, fJson);
+            }
+            return null;
+        }
+
+        Notification.addError("Unable to find " + SETTINGS_FILE + " for project " + projRoot.getName());
+        return null;
+    }
+
+    /**
+     * Convert an obsolete .project file to a new .project.json file.
+     * @param projRoot - Root folder of the project
+     * @param legacySettingsFile - Obsolete .project file to load and convert
+     * @return - true if successful, false otherwise
+     */
+    private static boolean migrateLegacyProject(File projRoot, File legacySettingsFile) {
+        Project legacyProject = (Project) SettingsSave.loadInstance(legacySettingsFile, "Project");
+        if (legacyProject == null) {
+            Notification.addError("Unable to load legacy project " + projRoot.getName());
+            return false;
+        }
+        legacyProject.parent = null;
+        legacyProject.baseFolder = projRoot;
+        if (legacyProject.sourceSetToUse == null) {
+            legacyProject.sourceSetToUse = ResourceSet.allFiles;
+        }
+        legacyProject.save();
+        return true;
     }
 
     /**

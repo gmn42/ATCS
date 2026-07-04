@@ -267,7 +267,7 @@ public abstract class Editor extends JPanel implements ProjectElementListener {
         tfArea.setWrapStyleWord(true);
 
         // Ensure Tab moves focus instead of inserting a tab character
-        tfArea.setFocusTraversalKeysEnabled(true);
+        tfArea.setFocusTraversalKeysEnabled(false);
         InputMap im = tfArea.getInputMap(JComponent.WHEN_FOCUSED);
         // Bind Tab and Shift+Tab to focus traversal actions (transferFocus/transferFocusBackward)
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0), "focusNextComponent");
