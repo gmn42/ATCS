@@ -24,16 +24,14 @@ public final class Profiling {
     public static void run(String label, boolean enabled, Runnable action) {
         long start = enabled ? System.nanoTime() : 0L;
         increaseIndent();
-        action.run();
         try {
             action.run();
-        }finally {
+        } finally {
             if(enabled) {
                 printf("%s took %d ms", label, elapsedMillis(start));
             }
             decreaseIndent();
         }
-        decreaseIndent();
     }
 
 

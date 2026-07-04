@@ -305,7 +305,7 @@ public class ProjectsTree extends JPanel {
         }
         if (node instanceof BookmarkFolder) {
             String desc = ((BookmarkFolder) node).getDesc();
-            if (desc != null && desc.startsWith("*")) desc = desc.replaceFirst("^\\*+", "");
+            if (desc != null && desc.startsWith("*")) desc = desc.substring(1);
             return "bookmarkFolder:" + desc;
         }
         if (node instanceof BookmarkEntry) {
@@ -317,7 +317,7 @@ public class ProjectsTree extends JPanel {
             return "element:" + node.getClass().getName() + ":" + gameDataElement.id;
         }
         String desc = node.getDesc();
-        if (desc != null && desc.startsWith("*")) desc = desc.replaceFirst("^\\*+", "");
+        if (desc != null && desc.startsWith("*")) desc = desc.substring(1);
         return "node:" + node.getClass().getName() + ":" + desc;
     }
 
@@ -545,8 +545,8 @@ public class ProjectsTree extends JPanel {
                 if (da == null) da = "";
                 if (db == null) db = "";
                 // Ignore leading '*' markers (modified indicator) when sorting so saving state doesn't change order
-                String na = da.startsWith("*") ? da.replaceFirst("^\\*+", "") : da;
-                String nb = db.startsWith("*") ? db.replaceFirst("^\\*+", "") : db;
+                String na = da.startsWith("*") ? da.substring(1) : da;
+                String nb = db.startsWith("*") ? db.substring(1) : db;
                 int r = String.CASE_INSENSITIVE_ORDER.compare(na, nb);
                 if (r != 0) return r;
                 // Tie-breaker: use underlying index so sorting is deterministic
@@ -611,7 +611,7 @@ public class ProjectsTree extends JPanel {
             }
 
             for (TreeModelListener l : listeners) {
-                l.treeNodesInserted(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath().getPath(),
+                l.treeNodesInserted(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath(),
                                                        new int[]{sortedIndex},
                                                        new Object[]{node.getLastPathComponent()}));
             }
@@ -656,7 +656,7 @@ public class ProjectsTree extends JPanel {
                     l.treeNodesRemoved(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath(),
                                                           new int[]{oldIndex},
                                                           new Object[]{node.getLastPathComponent()}));
-                    l.treeNodesInserted(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath().getPath(),
+                    l.treeNodesInserted(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath(),
                                                            new int[]{newIndex},
                                                            new Object[]{node.getLastPathComponent()}));
                 }
@@ -692,12 +692,15 @@ public class ProjectsTree extends JPanel {
                 sortedIndex = bs;
                 list.remove(bs);
             } else {
-                sortedIndex = parent.getIndex((TreeNode) child);
+                sortedIndex = -1;
             }
 
+            // Couldn't find the node.  Something is out of sync, so fire treeStructureChanged to refresh it.
             if (sortedIndex < 0) {
                 for (TreeModelListener l : listeners) {
-                    l.treeStructureChanged(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath().getPath()));
+                    l.treeStructureChanged(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath()));
+                    // Log stack trace
+                    new Exception().printStackTrace();
                 }
                 return;
             }

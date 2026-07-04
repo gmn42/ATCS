@@ -605,7 +605,8 @@ public class WorkspaceActions {
     };
 
     /**
-     * workspaceBusy routines -
+     * workspaceBusy routines -
+
      * Whether the workspace is currently busy (generally, load operation in progress)
      */
     private volatile boolean workspaceBusy = false;
@@ -616,7 +617,13 @@ public class WorkspaceActions {
 
     public void setWorkspaceBusy(boolean busy) {
         workspaceBusy = busy;
-        selectionChanged(selectedNode, selectedPaths);
+        if(SwingUtilities.isEventDispatchThread()) {
+            selectionChanged(selectedNode, selectedPaths);
+        } else {
+            SwingUtilities.invokeLater(() -> {
+                selectionChanged(selectedNode, selectedPaths);
+            });
+        }
     }
 
     private void persistUiStateIfPossible() {
