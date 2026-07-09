@@ -1,16 +1,31 @@
 name: Release Build
 
+permissions:
+  contents: write
+
 on:
   release:
     types: [ created ]
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: (Optional) Release tag to upload assets to
+        required: false
+        type: string
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
 
 jobs:
-  build:
+  build-linux-zip:
     runs-on: ubuntu-latest
+    container: eclipse-temurin:21-jdk
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
 
       - name: Get Version
         id: get_version
@@ -20,50 +35,199 @@ jobs:
           cat res/ATCS_latest
           echo ""
           VERSION=$(tr -d '[:space:]' < "res/ATCS_latest")
+          VERSION="${VERSION#v}"
           echo "Processed version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Environment variable set to: $VERSION"
 
-      - name: Set up JDK
-        uses: actions/setup-java@v2
-        with:
-          java-version: '11'
-          distribution: 'temurin'
-
-      - name: Build JAR
+      - name: Build Zip
         shell: bash
         run: |
-          cd packaging
-          chmod +x package.sh
-          echo "Building JAR and ZIP for version: ${{ env.VERSION }}"
-          ./package.sh
+          echo "Building ZIP for version: ${{ env.VERSION }}"
+          ./gradlew packageZip --no-daemon
           echo "Created artifacts:"
-          ls -la common/ATCS.jar
-          ls -la ATCS_${{ env.VERSION }}.zip
+          ls -la build/distributions/ATCS-${{ env.VERSION }}.zip
 
       - name: Upload Release Assets (zip)
-        uses: softprops/action-gh-release@v1
+        if: ${{ env.RELEASE_TAG != '' }}
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
-            ./packaging/ATCS_${{ env.VERSION }}.zip
+            ./build/distributions/ATCS-${{ env.VERSION }}*.zip
 
-      - name: 'Install makensis (apt)'
-        run: sudo apt update && sudo apt install -y nsis nsis-pluginapi
-        continue-on-error: true
+  build-linux-deb:
+    runs-on: ubuntu-latest
+    container: eclipse-temurin:21-jdk
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Install DEB tools
+        run: |
+          apt-get update
+          apt-get install -y fakeroot
+
+      - name: Build Linux DEB
+        run: ./gradlew --no-daemon packageLinuxDeb
+
+      - name: Upload Release Assets (deb)
+        if: ${{ env.RELEASE_TAG != '' }}
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: |
+            build/distributions/*.deb
+
+  build-linux-rpm:
+    runs-on: ubuntu-latest
+    container: eclipse-temurin:21-jdk
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Install RPM tools
+        run: |
+          apt-get update
+          apt-get install -y rpm git findutils tar unzip
+
+      - name: Build Linux RPM
+        run: ./gradlew --no-daemon packageLinuxRpm
+
+      - name: Upload Release Assets (rpm)
+        if: ${{ env.RELEASE_TAG != '' }}
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: |
+            build/distributions/*.rpm
+
+  build-legacy-exe:
+    runs-on: ubuntu-latest
+    container: eclipse-temurin:21-jdk
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Get Version
+        id: get_version
+        shell: bash
+        run: |
+          echo "Reading version from file:"
+          cat res/ATCS_latest
+          echo ""
+          VERSION=$(tr -d '[:space:]' < "res/ATCS_latest")
+          VERSION="${VERSION#v}"
+          echo "Processed version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Environment variable set to: $VERSION"
+
+      - name: Install makensis (apt)
+        run: |
+          apt-get update
+          apt-get install -y nsis nsis-pluginapi
+
+      - name: Build Shadow JAR
+        run: ./gradlew --no-daemon shadowJar
 
       - name: Create Windows-Installer with NSIS
-        uses: joncloud/makensis-action@v4
+        uses: joncloud/makensis-action@v5.0
         with:
           script-file: packaging/Windows/ATCS_Installer.nsi
-          arguments: -DVERSION="${{ env.VERSION }}"
-        continue-on-error: true
+          arguments: -DVERSION="${{ env.VERSION }}" -DATCS_JAR_PATH="../../build/libs/ATContentStudio-${{ env.VERSION }}-all.jar" -DATCS_OUTPUT_FILE="../ATCS_${{ env.VERSION }}_Setup.exe"
 
-      - name: Upload Release Assets (exe)
-        uses: softprops/action-gh-release@v1
+      - name: Upload Release Assets (legacy exe)
+        if: ${{ env.RELEASE_TAG != '' }}
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: ./packaging/ATCS_${{ env.VERSION }}_Setup.exe
-        continue-on-error: true
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: |
+          choco install wixtoolset -y --no-progress
+          $candle = Get-Command candle.exe -ErrorAction SilentlyContinue
+          $light = Get-Command light.exe -ErrorAction SilentlyContinue
+          if (-not $candle -or -not $light) {
+            throw 'WiX Toolset was not found on PATH.'
+          }
+          candle.exe -? | Out-Null
+          light.exe -? | Out-Null
+
+      - name: Build Windows installers
+        run: .\gradlew.bat packageWindowsExe packageWindowsMsi --no-daemon
+
+      - name: Upload Release Assets (exe)
+        if: ${{ env.RELEASE_TAG != '' }}
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: |
+            build/distributions/*.exe
+
+      - name: Upload Release Assets (msi)
+        if: ${{ env.RELEASE_TAG != '' }}
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: |
+            build/distributions/*.msi
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build macOS DMG
+        run: ./gradlew --no-daemon packageMacosDmg
+
+      - name: Upload Release Assets (dmg)
+        if: ${{ env.RELEASE_TAG != '' }}
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: |
+            build/distributions/*.dmg

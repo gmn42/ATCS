@@ -1,7 +1,30 @@
-# Ignore everything in the .idea directory...
+# Ignore everything in .idea, then explicitly keep the shared project files
+# that let another developer open, sync, and build the repo without
+# regenerating IDE metadata.
 *
-# except the following files and directories... (prefix with "!" to negate the ignore rule)
-!artifacts/   # IntelliJ IDEA artifacts
-!codeStyles/  # Code style settings
-!modules.xml  # Module settings
-!misc.xml     # Miscellaneous settings (including JDK configuration)
+# Keep this ignore policy file in git.
+!.gitignore
+# Keep packaged artifact definitions.
+!artifacts/
+# Keep shared code style settings.
+!codeStyles/
+# Keep compiler bytecode target settings.
+!compiler.xml
+# Keep Gradle import/sync settings.
+!gradle.xml
+# Keep project JDK/language level settings.
+!misc.xml
+# Keep the project module list.
+!modules.xml
+# Keep per-module IDEA metadata.
+!modules/
+# Keep module source/content mappings.
+!modules/*.iml
+# Keep the project display name.
+!.name
+# Keep shared run configuration settings.
+!runConfigurations.xml
+!runConfigurations/
+!runConfigurations/*.xml
+# Keep Git/VCS mapping settings.
+!vcs.xml
