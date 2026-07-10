@@ -188,13 +188,14 @@ public class WorkspaceActions {
     // TODO: Fix the memory leak here - it doesn't seem to usually free much of anything
     public ATCSAction closeProject = new ATCSAction("Close Project", "Closes the project, unloading all resources from memory") {
         public void actionPerformed(ActionEvent e) {
+            if(workspaceBusy) return;
             if (!(selectedNode instanceof Project)) return;
             Workspace.closeProject((Project) selectedNode);
             selectedNode = null;
         }
 
         public void selectionChanged(ProjectTreeNode selectedNode, TreePath[] selectedPaths) {
-            setEnabled(selectedNode instanceof Project);
+            setEnabled(!workspaceBusy && selectedNode instanceof Project);
         }
 
     };
@@ -202,7 +203,6 @@ public class WorkspaceActions {
     public ATCSAction openProject = new ATCSAction("Open Project", "Opens the project, loading all necessary resources in memory") {
         public void actionPerformed(ActionEvent e) {
             if (workspaceBusy) return;
-
             if (!(selectedNode instanceof ClosedProject)) return;
 
             setWorkspaceBusy(true);
@@ -217,6 +217,7 @@ public class WorkspaceActions {
 
     public ATCSAction deleteProject = new ATCSAction("Delete Project", "Deletes the project from the workspace, optionally removing its folder from disk") {
         public void actionPerformed(ActionEvent e) {
+            if(workspaceBusy) return;
             if (selectedNode instanceof Project) {
                 Boolean deleteFolder = ConfirmationDialogs.confirmProjectDelete(((Project) selectedNode).name);
                 if (deleteFolder != null) {
@@ -231,7 +232,7 @@ public class WorkspaceActions {
         }
 
         public void selectionChanged(ProjectTreeNode selectedNode, TreePath[] selectedPaths) {
-            setEnabled(selectedNode instanceof Project || selectedNode instanceof ClosedProject);
+            setEnabled(!workspaceBusy && (selectedNode instanceof Project || selectedNode instanceof ClosedProject));
         }
 
     };
@@ -610,10 +611,6 @@ public class WorkspaceActions {
      * Whether the workspace is currently busy (generally, load operation in progress)
      */
     private volatile boolean workspaceBusy = false;
-
-    private boolean isWorkspaceBusy() {
-        return workspaceBusy;
-    }
 
     public void setWorkspaceBusy(boolean busy) {
         workspaceBusy = busy;
