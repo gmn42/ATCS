@@ -324,6 +324,12 @@ public class Workspace implements ProjectTreeNode, Serializable, JsonSerializabl
         try {
             cp.childrenRemoved(new ArrayList<ProjectTreeNode>());
             Project p = Project.fromFolder(activeWorkspace, new File(activeWorkspace.baseFolder, cp.name));
+            // Check to make sure the project actually opened
+            if (p == null) {
+                Notification.addError("Failed to open project " + cp.name);
+                if(onFinished != null) onFinished.run();
+                return;
+            }
             p.open();
             activeWorkspace.projects.set(index, p);
             activeWorkspace.projectsOpenByName.put(p.name, true);

@@ -317,6 +317,9 @@ public class Dialogue extends JSONElement {
                         case giveItem:
                             reward.reward_obj = proj.getItem(reward.reward_obj_id);
                             break;
+                        case setNextPhraseID:
+                            reward.reward_obj = proj.getDialogue(reward.reward_obj_id);
+                            break;
                         case questProgress:
                         case removeQuestProgress:
                             reward.reward_obj = proj.getQuest(reward.reward_obj_id);

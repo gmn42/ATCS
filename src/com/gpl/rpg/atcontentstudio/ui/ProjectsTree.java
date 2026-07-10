@@ -508,7 +508,7 @@ public class ProjectsTree extends JPanel {
 
         @Override
         public int getChildCount(Object parent) {
-            return ((ProjectTreeNode) parent).getChildCount();
+            return (sortedChildren((ProjectTreeNode) parent)).size();
         }
 
         @Override
@@ -673,10 +673,9 @@ public class ProjectsTree extends JPanel {
         /**
          * Handle removal of {@code node} from the tree model.
          * <p>
-         * Attempts to remove the child from the cached sorted list using binary
-         * search; if found the list entry is removed and the removed event uses the
-         * sorted index. If the child is not found in the cache we fall back to the
-         * underlying parent's index for the TreeModelEvent.
+         * Removes the child from the cached sorted list by identity. The live
+         * parent model may already have dropped the child by the time this fires,
+         * so comparator-based lookup is not reliable here.
          *
          * @param node the removed node's TreePath
          */
@@ -685,17 +684,16 @@ public class ProjectsTree extends JPanel {
             ProjectTreeNode child = (ProjectTreeNode) node.getLastPathComponent();
 
             List<ProjectTreeNode> list = sortedChildren(parent);
-            java.util.Comparator<ProjectTreeNode> cmp = comparatorForParent(parent);
-            int bs = java.util.Collections.binarySearch(list, child, cmp);
-            int sortedIndex;
-            if (bs >= 0) {
-                sortedIndex = bs;
-                list.remove(bs);
-            } else {
-                sortedIndex = -1;
+            int sortedIndex = -1;
+            for (int i = 0; i < list.size(); i++) {
+                if (list.get(i) == child) {
+                    sortedIndex = i;
+                    list.remove(i);
+                    break;
+                }
             }
 
-            // Couldn't find the node.  Something is out of sync, so fire treeStructureChanged to refresh it.
+            // Couldn't find the node. Something is out of sync, so refresh the subtree.
             if (sortedIndex < 0) {
                 for (TreeModelListener l : listeners) {
                     l.treeStructureChanged(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath()));

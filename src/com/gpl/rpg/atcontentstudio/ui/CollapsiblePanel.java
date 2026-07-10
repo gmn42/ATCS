@@ -22,7 +22,7 @@ public class CollapsiblePanel extends JPanel {
 
         @Override
         public boolean isBorderOpaque() {
-            return true;
+            return false;
         }
 
         @Override
