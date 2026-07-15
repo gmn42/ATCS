@@ -77,7 +77,8 @@ Build the DMG with:
 ```
 
 The DMG output is written to `build/distributions/`.  Note that due to a platform limitation requiring that the major
-release version may not be '0', the MacOS release version is bumped by 10, so 10.7.1 is equivalent to 0.7.1.
+release version may not be '0', the MacOS release version is bumped by 10, so 10.7.1 is equivalent to 0.7.1.  Note that this
+applies to the installer _only_; the application retains the correct version number.
 
 ### Zip Distribution
 To build a ZIP distribution using the fat jar with icon and start script (requires a compatible JVM installed on target system):
