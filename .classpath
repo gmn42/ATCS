@@ -99,14 +99,6 @@
 			<attribute name="version" value="unknown"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="lib/jsoup-1.10.2-sources.jar">
-		<attributes>
-			<attribute name="gradle.buildServer" value="true"/>
-			<attribute name="groupId" value="unknown"/>
-			<attribute name="artifactId" value="jsoup-1.10.2-sources.jar"/>
-			<attribute name="version" value="unknown"/>
-		</attributes>
-	</classpathentry>
 	<classpathentry kind="lib" path="lib/jide-oss.jar">
 		<attributes>
 			<attribute name="gradle.buildServer" value="true"/>
