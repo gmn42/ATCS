@@ -22,6 +22,7 @@ import com.gpl.rpg.atcontentstudio.model.sprites.SpriteSheetSet;
 import com.gpl.rpg.atcontentstudio.model.sprites.Spritesheet;
 import com.gpl.rpg.atcontentstudio.model.tools.writermode.WriterModeDataSet;
 import com.gpl.rpg.atcontentstudio.model.tools.writermode.WriterModeData;
+import com.gpl.rpg.atcontentstudio.utils.Profiling;
 import com.jidesoft.swing.TreeSearchable;
 
 import javax.swing.*;
@@ -695,10 +696,10 @@ public class ProjectsTree extends JPanel {
 
             // Couldn't find the node. Something is out of sync, so refresh the subtree.
             if (sortedIndex < 0) {
+                Profiling.printf("WARNING: Failed to remove tree node from sorted cache; refreshing subtree instead. parent=%s, child=%s",
+                                     parent, child);
                 for (TreeModelListener l : listeners) {
                     l.treeStructureChanged(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath()));
-                    // Log stack trace
-                    new Exception().printStackTrace();
                 }
                 return;
             }
