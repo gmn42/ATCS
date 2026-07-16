@@ -33,8 +33,6 @@ import java.text.Collator;
 public abstract class Editor extends JPanel implements ProjectElementListener {
 
     private static final long serialVersionUID = 241750514033596878L;
-    // Set true when focus transfer is initiated via keyboard (Tab/Shift+Tab).
-    private static volatile boolean focusTraversalRequested = false;
     private static final FieldUpdateListener nullListener = new FieldUpdateListener() {
         @Override
         public void valueChanged(JComponent source, Object value) {
@@ -274,21 +272,11 @@ public abstract class Editor extends JPanel implements ProjectElementListener {
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, KeyEvent.SHIFT_DOWN_MASK), "focusPreviousComponent");
         tfArea.getActionMap().put("focusNextComponent", new AbstractAction() {
             @Override
-            public void actionPerformed(ActionEvent e) { Editor.focusTraversalRequested = true; tfArea.transferFocus(); }
+            public void actionPerformed(ActionEvent e) { tfArea.transferFocus(); }
         });
         tfArea.getActionMap().put("focusPreviousComponent", new AbstractAction() {
             @Override
-            public void actionPerformed(ActionEvent e) { Editor.focusTraversalRequested = true; tfArea.transferFocusBackward(); }
-        });
-        // If focus arrived via keyboard traversal, move caret to end.
-        tfArea.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                if (Editor.focusTraversalRequested) {
-                    SwingUtilities.invokeLater(() -> tfArea.setCaretPosition(tfArea.getDocument().getLength()));
-                    Editor.focusTraversalRequested = false;
-                }
-            }
+            public void actionPerformed(ActionEvent e) { tfArea.transferFocusBackward(); }
         });
 
         addTextComponent(pane, label, editable, listener, tfArea, true, true);
