@@ -18,6 +18,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.*;
+import java.util.regex.Pattern;
 
 public class Workspace implements ProjectTreeNode, Serializable, JsonSerializable {
 
@@ -29,6 +30,8 @@ public class Workspace implements ProjectTreeNode, Serializable, JsonSerializabl
     public static final String WS_SETTINGS_FILE_JSON = ".workspace.json";
 
     public static Workspace activeWorkspace;
+    private static final Pattern INVALID_PROJECT_NAME_CHARS = Pattern.compile("[\\\\/:*?\"<>|\\p{Cntrl}]");
+    private static final Pattern RESERVED_WINDOWS_NAME = Pattern.compile("(?i)^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\\..*)?$");
 
     public Preferences preferences = new Preferences();
     public File baseFolder;
@@ -261,6 +264,14 @@ public class Workspace implements ProjectTreeNode, Serializable, JsonSerializabl
     public static void createProject(final String projectName,
                                      final File gameSourceFolder, final Project.ResourceSet sourceSet, final Runnable onFinished) {
 
+        // This is already checked in the creation wizard, but just in case...
+        String validationError = getProjectNameValidationError(projectName);
+        if (validationError != null) {
+            Notification.addError(validationError);
+            if(onFinished != null) onFinished.run();
+            return;
+        }
+
         if (activeWorkspace.projectsName.contains(projectName)) {
             Notification.addError("A project named %s already exists in this workspace.".formatted(projectName));
             if(onFinished != null) onFinished.run();
@@ -290,6 +301,22 @@ public class Workspace implements ProjectTreeNode, Serializable, JsonSerializabl
                         }
                     }
                 });
+    }
+
+    public static String getProjectNameValidationError(String projectName) {
+        if (projectName == null || projectName.isEmpty()) {
+            return "Select a project name.";
+        }
+        if (!projectName.equals(projectName.trim())) {
+            return "Project names cannot start or end with spaces.";
+        }
+        if (INVALID_PROJECT_NAME_CHARS.matcher(projectName).find()) {
+            return "Project names can only use filename-safe characters.";
+        }
+        if (RESERVED_WINDOWS_NAME.matcher(projectName).matches()) {
+            return "Project names cannot use reserved Windows device names.";
+        }
+        return null;
     }
 
     public static void closeProject(Project p) {

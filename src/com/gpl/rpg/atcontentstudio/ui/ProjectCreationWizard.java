@@ -262,8 +262,9 @@ public class ProjectCreationWizard extends JDialog {
             return;
         }
         String projectName = projectNameField.getText();
-        if (!projectName.equals(projectName.trim())) {
-            errorLabel.setText("<html><font color=\"#FF0000\">Project names cannot start or end with spaces.</font></html>");
+        String projectNameError = Workspace.getProjectNameValidationError(projectName);
+        if (projectNameError != null) {
+            errorLabel.setText("<html><font color=\"#FF0000\">" + projectNameError + "</font></html>");
             this.okButton.setEnabled(false);
             return;
         }
