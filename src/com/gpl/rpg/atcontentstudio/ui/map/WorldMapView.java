@@ -211,39 +211,59 @@ public class WorldMapView extends JComponent implements Scrollable {
         }
     }
 
+    /**
+     * Renders a single map into an offscreen image before compositing it into the world map.
+     *
+     * @param map the map to render
+     * @param templateGraphics graphics context used to copy rendering hints
+     * @return the rendered map image
+     */
     private BufferedImage renderMapOffscreen(TMXMap map, Graphics2D templateGraphics) {
-                int mapWidth = Math.max(1, map.tmxMap.getWidth() * map.tmxMap.getTileWidth());
-                int mapHeight = Math.max(1, map.tmxMap.getHeight() * map.tmxMap.getTileHeight());
-                BufferedImage offscreen = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_INT_ARGB);
+        int mapWidth = Math.max(1, map.tmxMap.getWidth() * map.tmxMap.getTileWidth());
+        int mapHeight = Math.max(1, map.tmxMap.getHeight() * map.tmxMap.getTileHeight());
+        BufferedImage offscreen = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_INT_ARGB);
 
-                Graphics2D offG = offscreen.createGraphics();
-                try {
-                    offG.setRenderingHints(templateGraphics.getRenderingHints());
-                    offG.setClip(0, 0, mapWidth, mapHeight);
-                    paintMapContents(offG, map);
-                    if (map.colorFilter != null && map.colorFilter != TMXMap.ColorFilter.none) {
-                        MapColorFilters.applyColorFilter(map.colorFilter, offscreen);
-                    }
-                } finally {
-                    offG.dispose();
-                }
+        Graphics2D offG = offscreen.createGraphics();
+        try {
+            offG.setRenderingHints(templateGraphics.getRenderingHints());
+            offG.setClip(0, 0, mapWidth, mapHeight);
+            paintMapContents(offG, map);
+            if (map.colorFilter != null && map.colorFilter != TMXMap.ColorFilter.none) {
+                MapColorFilters.applyColorFilter(map.colorFilter, offscreen);
+            }
+        } finally {
+            offG.dispose();
+        }
 
-                return offscreen;
+        return offscreen;
     }
 
+    /**
+     * Paints the visible tile and object layers for a single map onto the provided graphics.
+     *
+     * @param g2 graphics context to paint into
+     * @param map map whose layers should be rendered
+     */
     private void paintMapContents(Graphics2D g2, TMXMap map) {
-                MapRenderer renderer = new OrthogonalRenderer(map.tmxMap);
+        MapRenderer renderer = new OrthogonalRenderer(map.tmxMap);
 
-                for (tiled.core.MapLayer layer : map.tmxMap) {
-                    if (layer instanceof tiled.core.TileLayer && layer.isVisible()) {
-                        if (layer.getName().equalsIgnoreCase("walkable")) continue;
-                        renderer.paintTileLayer(g2, (tiled.core.TileLayer) layer);
-                    } else if (layer instanceof tiled.core.ObjectGroup) {
-                        paintObjectGroup(g2, map, (tiled.core.ObjectGroup) layer);
-                    }
-                }
+        for (tiled.core.MapLayer layer : map.tmxMap) {
+            if (layer instanceof tiled.core.TileLayer && layer.isVisible()) {
+                if (layer.getName().equalsIgnoreCase("walkable")) continue;
+                renderer.paintTileLayer(g2, (tiled.core.TileLayer) layer);
+            } else if (layer instanceof tiled.core.ObjectGroup) {
+                paintObjectGroup(g2, map, (tiled.core.ObjectGroup) layer);
+            }
+        }
     }
 
+    /**
+     * Paints the visible objects from one object group.
+     *
+     * @param g2d graphics context to paint into
+     * @param map map that owns the object group
+     * @param layer the object group to render
+     */
     private void paintObjectGroup(Graphics2D g2d, TMXMap map, tiled.core.ObjectGroup layer) {
         for (MapObjectGroup group : map.groups) {
             if (group.tmxGroup == layer) {
@@ -260,6 +280,13 @@ public class WorldMapView extends JComponent implements Scrollable {
         }
     }
 
+    /**
+     * Draws a highlighted representation of a map object.
+     *
+     * @param object the object to draw
+     * @param g2d graphics context to paint into
+     * @param color base highlight color
+     */
     private void drawObject(MapObject object, Graphics2D g2d, Color color) {
         g2d.setPaint(color);
         g2d.drawRect(object.x + 1, object.y + 1, object.w - 3, object.h - 3);
