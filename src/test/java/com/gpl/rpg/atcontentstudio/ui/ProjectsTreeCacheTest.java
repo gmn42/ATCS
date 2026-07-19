@@ -83,6 +83,39 @@ public class ProjectsTreeCacheTest {
         assertEquals(0, listener.structureChangedCount);
     }
 
+    @Test
+    /**
+     * Verifies that rebuilding the workspace root clears stale sorted cache entries.
+     */
+    public void refreshingWorkspaceRootInvalidatesCachedChildren() throws Exception {
+        ProjectsTree.ProjectsTreeModel model = createModel();
+        RecordingListener listener = new RecordingListener();
+        model.addTreeModelListener(listener);
+
+        Workspace workspace = Workspace.activeWorkspace;
+        DummyNode alpha = new DummyNode("alpha", workspace);
+        DummyNode beta = new DummyNode("beta", workspace);
+        workspace.projects.clear();
+        workspace.projects.add(alpha);
+        workspace.projects.add(beta);
+
+        assertSame(alpha, model.getChild(workspace, 0));
+        assertSame(beta, model.getChild(workspace, 1));
+
+        DummyNode gamma = new DummyNode("aardvark", workspace);
+        workspace.projects = new ArrayList<ProjectTreeNode>();
+        workspace.projects.add(gamma);
+
+        workspace.notifyCreated();
+
+        assertSame(gamma, model.getChild(workspace, 0));
+        assertEquals(1, model.getChildCount(workspace));
+        assertEquals(1, listener.structureChangedCount);
+    }
+
+    /**
+     * Builds a fresh tree model backed by a temporary workspace root.
+     */
     private static ProjectsTree.ProjectsTreeModel createModel() throws Exception {
         Path tempRoot = Files.createTempDirectory("atcs-tree-cache");
         File workspaceRoot = tempRoot.resolve("workspace").toFile();
@@ -91,6 +124,9 @@ public class ProjectsTreeCacheTest {
         return tree.new ProjectsTreeModel();
     }
 
+    /**
+     * Creates a two-node tree path for the supplied parent and child.
+     */
     private static TreePath path(DummyNode parent, DummyNode child) {
         return new TreePath(new Object[]{parent, child});
     }
@@ -121,6 +157,9 @@ public class ProjectsTreeCacheTest {
             structureChangedCount++;
         }
 
+        /**
+         * Returns the first child index carried by a tree event, or -1 when absent.
+         */
         private int firstIndex(TreeModelEvent e) {
             return e.getChildIndices() == null || e.getChildIndices().length == 0 ? -1 : e.getChildIndices()[0];
         }
@@ -128,17 +167,23 @@ public class ProjectsTreeCacheTest {
 
     private static class DummyNode implements ProjectTreeNode {
         private String desc;
-        private final DummyNode parent;
+        private final ProjectTreeNode parent;
         private final List<DummyNode> children = new ArrayList<DummyNode>();
 
-        DummyNode(String desc, DummyNode parent) {
+        /**
+         * Creates a dummy node with the supplied label and parent.
+         */
+        DummyNode(String desc, ProjectTreeNode parent) {
             this.desc = desc;
             this.parent = parent;
-            if (parent != null) {
-                parent.children.add(this);
+            if (parent instanceof DummyNode) {
+                ((DummyNode) parent).children.add(this);
             }
         }
 
+        /**
+         * Updates the node label used by the sorted tree model.
+         */
         void rename(String desc) {
             this.desc = desc;
         }

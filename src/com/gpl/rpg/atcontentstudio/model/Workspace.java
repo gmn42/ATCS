@@ -220,20 +220,39 @@ public class Workspace implements ProjectTreeNode, Serializable, JsonSerializabl
     }
 
     @Override
+    /**
+     * Notifies the tree model that workspace children were added.
+     * A root-level change triggers a full structure refresh so the sorted cache
+     * cannot go stale after the backing project list is rebuilt.
+     */
     public void childrenAdded(List<ProjectTreeNode> path) {
-        path.add(0, this);
-        if (projectsTreeModel != null)
+        path.addFirst(this);
+        if (projectsTreeModel != null) {
+            if (path.size() == 1) {
+                projectsTreeModel.refreshTreeStructure();
+                return;
+            }
             projectsTreeModel.insertNode(new TreePath(path.toArray()));
+        }
     }
 
     @Override
+    /**
+     * Notifies the tree model that workspace children changed.
+     * Root-level changes rebuild the full tree structure; deeper changes are
+     * forwarded one level at a time so sorted positions stay in sync.
+     */
     public void childrenChanged(List<ProjectTreeNode> path) {
-        path.add(0, this);
-        ProjectTreeNode last = path.get(path.size() - 1);
+        path.addFirst(this);
+        ProjectTreeNode last = path.getLast();
         if (projectsTreeModel != null) {
+            if (path.size() == 1) {
+                projectsTreeModel.refreshTreeStructure();
+                return;
+            }
             while (path.size() > 1) {
                 projectsTreeModel.changeNode(new TreePath(path.toArray()));
-                path.remove(path.size() - 1);
+                path.removeLast();
             }
 
         }
@@ -241,10 +260,20 @@ public class Workspace implements ProjectTreeNode, Serializable, JsonSerializabl
     }
 
     @Override
+    /**
+     * Notifies the tree model that workspace children were removed.
+     * A root-level change invalidates the entire tree model because the backing
+     * project list may have been replaced wholesale.
+     */
     public void childrenRemoved(List<ProjectTreeNode> path) {
-        path.add(0, this);
-        if (projectsTreeModel != null)
+        path.addFirst(this);
+        if (projectsTreeModel != null) {
+            if (path.size() == 1) {
+                projectsTreeModel.refreshTreeStructure();
+                return;
+            }
             projectsTreeModel.removeNode(new TreePath(path.toArray()));
+        }
     }
 
     @Override
@@ -349,7 +378,6 @@ public class Workspace implements ProjectTreeNode, Serializable, JsonSerializabl
 
     WorkerDialog.showTaskMessage("Opening project " + cp.name + "...", ATContentStudio.frame, () -> {
         try {
-            cp.childrenRemoved(new ArrayList<ProjectTreeNode>());
             Project p = Project.fromFolder(activeWorkspace, new File(activeWorkspace.baseFolder, cp.name));
             // Check to make sure the project actually opened
             if (p == null) {
@@ -360,6 +388,7 @@ public class Workspace implements ProjectTreeNode, Serializable, JsonSerializabl
             p.open();
             activeWorkspace.projects.set(index, p);
             activeWorkspace.projectsOpenByName.put(p.name, true);
+            cp.childrenRemoved(new ArrayList<ProjectTreeNode>());
             p.notifyCreated();
             saveActive();
         } finally {

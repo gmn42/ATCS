@@ -529,6 +529,23 @@ public class ProjectsTree extends JPanel {
         private final java.util.Map<ProjectTreeNode, List<ProjectTreeNode>> sortedCache = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<ProjectTreeNode, List<ProjectTreeNode>>());
 
         /**
+         * Clears all cached sorted child lists and notifies listeners that the tree
+         * structure has changed from the root down.
+         */
+        public void refreshTreeStructure() {
+            sortedCache.clear();
+            Object root = getRoot();
+            if (!(root instanceof ProjectTreeNode)) {
+                return;
+            }
+
+            TreePath rootPath = new TreePath(new Object[]{root});
+            for (TreeModelListener l : listeners) {
+                l.treeStructureChanged(new TreeModelEvent(this, rootPath));
+            }
+        }
+
+        /**
          * Create a comparator for children of the given parent.
          * <p>
          * The comparator orders nodes by their {@link ProjectTreeNode#getDesc()} value
