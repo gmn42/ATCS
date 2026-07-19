@@ -12,7 +12,6 @@ import com.gpl.rpg.atcontentstudio.model.sprites.Spritesheet;
 import com.gpl.rpg.atcontentstudio.ui.*;
 import com.gpl.rpg.atcontentstudio.utils.DesktopIntegration;
 import com.gpl.rpg.atcontentstudio.utils.FileUtils;
-import com.gpl.rpg.atcontentstudio.utils.UiUtils;
 import com.jidesoft.swing.JideBoxLayout;
 import com.jidesoft.swing.JideTabbedPane;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
@@ -1491,10 +1490,7 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
 
             // Apply color filter to offscreen image using the matrix helper (avoids native raster access)
             if (map.colorFilter != null && map.colorFilter != TMXMap.ColorFilter.none) {
-                float[] matrix = MapColorFilters.buildMatrixForFilter(map.colorFilter);
-                if (matrix != null) {
-                    MapColorFilters.applyMatrixToImage(matrix, offscreen);
-                }
+                MapColorFilters.applyColorFilter(map.colorFilter, offscreen);
             }
 
             // Blit offscreen to the real Graphics2D at the clip location
@@ -2203,6 +2199,7 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
         public boolean showHeroWithMouse = true;
         public boolean showTooltip = true;
         private OrthogonalRenderer renderer;
+        private java.awt.image.BufferedImage offscreen;
 
         private String groundName, objectsName, aboveName, topName, walkableName;
         private Map<String, tiled.core.TileLayer> layersByName = new LinkedHashMap<String, tiled.core.TileLayer>();
@@ -2348,45 +2345,59 @@ public class TMXMapEditor extends Editor implements TMXMap.MapChangedOnDiskListe
                 return;
             }
 
-            // Draw a gray background
-            g2d.setPaint(new Color(100, 100, 100));
-            g2d.fill(clip);
+            final int cw = Math.max(1, clip.width);
+            final int ch = Math.max(1, clip.height);
 
-            // Draw each tile map layer
-
-            if (ground != null) {
-                renderer.paintTileLayer(g2d, ground);
+            if (offscreen == null || offscreen.getWidth() != cw || offscreen.getHeight() != ch) {
+                offscreen = new java.awt.image.BufferedImage(cw, ch, java.awt.image.BufferedImage.TYPE_INT_ARGB);
             }
 
-            if (objects != null) {
-                renderer.paintTileLayer(g2d, objects);
+            Graphics2D offG = offscreen.createGraphics();
+            try {
+                offG.setRenderingHints(g2d.getRenderingHints());
+                offG.setClip(0, 0, cw, ch);
+                offG.setPaint(new Color(100, 100, 100));
+                offG.fillRect(0, 0, cw, ch);
+                offG.translate(-clip.x, -clip.y);
+
+                // Draw each tile map layer
+
+                if (ground != null) {
+                    renderer.paintTileLayer(offG, ground);
+                }
+
+                if (objects != null) {
+                    renderer.paintTileLayer(offG, objects);
+                }
+
+                if (showHeroWithMouse && tooltippedTile != null && ((TMXMap) target).tmxMap.contains(tooltippedTile.x, tooltippedTile.y) &&
+                        walkable != null && walkable.getTileAt(tooltippedTile.x, tooltippedTile.y) == null) {
+                    offG.drawImage(DefaultIcons.getHeroImage(), tooltippedTile.x * 32, tooltippedTile.y * 32, 32, 32, null);
+                }
+
+                if (above != null) {
+                    renderer.paintTileLayer(offG, above);
+                }
+
+                if (top != null) {
+                    renderer.paintTileLayer(offG, top);
+                }
+                if (walkable != null && showWalkable) {
+                    renderer.paintTileLayer(offG, walkable);
+                }
+
+                if (map.colorFilter != null) {
+                    MapColorFilters.applyColorFilter(map.colorFilter, offscreen);
+                }
+
+                if (highlighted != null) {
+                    drawObject(highlighted, offG, new Color(190, 20, 20));
+                }
+            } finally {
+                offG.dispose();
             }
 
-            if (showHeroWithMouse && tooltippedTile != null && ((TMXMap) target).tmxMap.contains(tooltippedTile.x, tooltippedTile.y) &&
-                    walkable != null && walkable.getTileAt(tooltippedTile.x, tooltippedTile.y) == null) {
-                g2d.drawImage(DefaultIcons.getHeroImage(), tooltippedTile.x * 32, tooltippedTile.y * 32, 32, 32, null);
-            }
-
-            if (above != null) {
-                renderer.paintTileLayer(g2d, above);
-            }
-
-            if (top != null) {
-                renderer.paintTileLayer(g2d, top);
-            }
-            if (walkable != null && showWalkable) {
-                renderer.paintTileLayer(g2d, walkable);
-            }
-
-            if (map.colorFilter != null) {
-                MapColorFilters.applyColorfilter(map.colorFilter, g2d);
-            }
-
-
-            if (highlighted != null) {
-                drawObject(highlighted, g2d, new Color(190, 20, 20));
-            }
-
+            g2d.drawImage(offscreen, clip.x, clip.y, null);
             g2d.dispose();
         }
 

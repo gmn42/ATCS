@@ -12,6 +12,7 @@ import java.awt.event.MouseEvent;
 import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
 import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -169,30 +170,11 @@ public class WorldMapView extends JComponent implements Scrollable {
             int x = mapLocations.get(s).x;
             int y = mapLocations.get(s).y;
 
-            g2.translate(x, y);
-
-
             TMXMap map = proj.getMap(s);
             if (map == null) continue;
-            MapRenderer renderer = new OrthogonalRenderer(map.tmxMap);
 
-            // Draw each tile map layer
-            for (tiled.core.MapLayer layer : ((TMXMap) map).tmxMap) {
-                if (layer instanceof tiled.core.TileLayer && layer.isVisible()) {
-                    if (layer.getName().equalsIgnoreCase("walkable")) continue;
-                    renderer.paintTileLayer(g2, (tiled.core.TileLayer) layer);
-                } else if (layer instanceof tiled.core.ObjectGroup) {
-                    paintObjectGroup(g2, map, (tiled.core.ObjectGroup) layer);
-                }
-            }
-            if (map.colorFilter != null) {
-                Shape oldClip = g2.getClip();
-                g2.setClip(0, 0, map.tmxMap.getWidth() * TILE_SIZE, map.tmxMap.getHeight() * TILE_SIZE);
-                MapColorFilters.applyColorfilter(map.colorFilter, g2);
-                g2.setClip(oldClip);
-            }
-
-            g2.translate(-x, -y);
+            BufferedImage offscreen = renderMapOffscreen(map, g2);
+            g2.drawImage(offscreen, x, y, null);
 
         }
 
@@ -227,6 +209,39 @@ public class WorldMapView extends JComponent implements Scrollable {
                 g2.draw(gv.getOutline((int) (areaCovered.getCenterX() - stringBounds.getCenterX()), (int) (areaCovered.getCenterY() - stringBounds.getCenterY())));
             }
         }
+    }
+
+    private BufferedImage renderMapOffscreen(TMXMap map, Graphics2D templateGraphics) {
+                int mapWidth = Math.max(1, map.tmxMap.getWidth() * map.tmxMap.getTileWidth());
+                int mapHeight = Math.max(1, map.tmxMap.getHeight() * map.tmxMap.getTileHeight());
+                BufferedImage offscreen = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_INT_ARGB);
+
+                Graphics2D offG = offscreen.createGraphics();
+                try {
+                    offG.setRenderingHints(templateGraphics.getRenderingHints());
+                    offG.setClip(0, 0, mapWidth, mapHeight);
+                    paintMapContents(offG, map);
+                    if (map.colorFilter != null && map.colorFilter != TMXMap.ColorFilter.none) {
+                        MapColorFilters.applyColorFilter(map.colorFilter, offscreen);
+                    }
+                } finally {
+                    offG.dispose();
+                }
+
+                return offscreen;
+    }
+
+    private void paintMapContents(Graphics2D g2, TMXMap map) {
+                MapRenderer renderer = new OrthogonalRenderer(map.tmxMap);
+
+                for (tiled.core.MapLayer layer : map.tmxMap) {
+                    if (layer instanceof tiled.core.TileLayer && layer.isVisible()) {
+                        if (layer.getName().equalsIgnoreCase("walkable")) continue;
+                        renderer.paintTileLayer(g2, (tiled.core.TileLayer) layer);
+                    } else if (layer instanceof tiled.core.ObjectGroup) {
+                        paintObjectGroup(g2, map, (tiled.core.ObjectGroup) layer);
+                    }
+                }
     }
 
     private void paintObjectGroup(Graphics2D g2d, TMXMap map, tiled.core.ObjectGroup layer) {
@@ -348,39 +363,6 @@ public class WorldMapView extends JComponent implements Scrollable {
     private void backgroundClicked(MouseEvent e) {
         for (MapClickListener l : listeners) l.backgroundClicked(e);
     }
-
-//	private boolean paintObjectGroup(Graphics2D g2d, TMXMap map, tiled.core.ObjectGroup layer) {
-//    	boolean paintSelected = false;
-//    	for (MapObjectGroup group : map.groups) {
-//			if (group.tmxGroup == layer) {
-//				for (MapObject object : group.mapObjects) {
-//					drawObject(object, g2d, new Color(20, 20, 190));
-//				}
-//				break;
-//			}
-//		}
-//    	return paintSelected;
-//	}
-//
-//	private void drawObject(MapObject object, Graphics2D g2d, Color color) {
-//		g2d.setPaint(color);
-//		g2d.drawRect(object.x+1, object.y+1, object.w-3, object.h-3);
-//		g2d.drawRect(object.x+2, object.y+2, object.w-5, object.h-5);
-//		g2d.setPaint(color.darker().darker());
-//		g2d.drawLine(object.x, object.y + object.h - 1, object.x + object.w - 1, object.y + object.h - 1);
-//		g2d.drawLine(object.x + object.w - 1, object.y, object.x + object.w - 1, object.y + object.h - 1);
-//		g2d.drawLine(object.x + 3, object.y + 3, object.x + object.w - 4, object.y + 3);
-//		g2d.drawLine(object.x + 3, object.y + 3, object.x + 3, object.y + object.h - 4);
-//		g2d.setPaint(color.brighter().brighter().brighter());
-//		g2d.drawLine(object.x, object.y, object.x + object.w - 1, object.y);
-//		g2d.drawLine(object.x, object.y, object.x, object.y + object.h - 1);
-//		g2d.drawLine(object.x + 3, object.y + object.h - 4, object.x + object.w - 4, object.y + object.h - 4);
-//		g2d.drawLine(object.x + object.w - 4, object.y + 3, object.x + object.w - 4, object.y + object.h - 4);
-//		Image img = object.getIcon();
-//		g2d.setColor(new Color(255, 255, 255, 120));
-//		g2d.fillRect(object.x + 2, object.y + 2, img.getWidth(null), img.getHeight(null));
-//		g2d.drawImage(object.getIcon(), object.x + 2, object.y + 2, null);
-//	}
 
     @Override
     public Dimension getPreferredSize() {
