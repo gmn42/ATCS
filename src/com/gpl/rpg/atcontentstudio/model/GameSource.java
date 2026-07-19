@@ -57,7 +57,6 @@ public class GameSource implements ProjectTreeNode, Serializable, JsonSerializab
 
     public static enum Type {
         source,
-        referenced,
         altered,
         created
     }
@@ -69,10 +68,24 @@ public class GameSource implements ProjectTreeNode, Serializable, JsonSerializab
 
     public transient Map<String, List<String>> referencedSourceFiles = null;
 
+    /**
+     * Create a new GameSource instance from the saved JSON project definition.
+     * Intended for baseContent type 'source' only; behavior with other types specified in the json is undefined.
+     * @param json - JSON object containing source definition
+     * @param parent - parent Project object
+     */
     public GameSource(Map json, Project parent) {
         fromMap(json);
-        refreshTransients(parent);
+        this.parent = parent;
+        initData();
     }
+
+    /**
+     * Create a new GameSource instance from scratch.
+     * Intended for defining the baseContent source type (i.e., path to the game source tree)
+     * @param folder
+     * @param parent
+     */
     public GameSource(File folder, Project parent) {
         this.parent = parent;
         this.baseFolder = folder;
@@ -80,6 +93,12 @@ public class GameSource implements ProjectTreeNode, Serializable, JsonSerializab
         initData();
     }
 
+    /**
+     * Create a new GameSource instance for altered or created data.  Folder is the type name within the project folder.
+     * Data files will be loaded immediately.
+     * @param parent
+     * @param type
+     */
     public GameSource(Project parent, Type type) {
         this.parent = parent;
         this.baseFolder = new File(parent.baseFolder, type.toString());
@@ -87,11 +106,9 @@ public class GameSource implements ProjectTreeNode, Serializable, JsonSerializab
         initData();
     }
 
-    public void refreshTransients(Project p) {
-        parent = p;
-        initData();
-    }
-
+    /**
+     * Initialize the data fields for a GameSource object.
+     */
     public void initData() {
         if (type == Type.source) {
             if (parent.sourceSetToUse == ResourceSet.gameData || parent.sourceSetToUse == ResourceSet.debugData) {
@@ -240,10 +257,8 @@ public class GameSource implements ProjectTreeNode, Serializable, JsonSerializab
                 return (needsSaving() ? "*" : "") + "Altered data";
             case created:
                 return (needsSaving() ? "*" : "") + "Created data";
-            case referenced:
-                return (needsSaving() ? "*" : "") + "Referenced data";
             case source:
-                return (needsSaving() ? "*" : "") + "AT Source"; //The fact that it is from "source" is already mentionned by its parent.
+                return (needsSaving() ? "*" : "") + "Game source"; // Changed from "AT Source" to preserve the old sort order (after Altered/Created)
             default:
                 return (needsSaving() ? "*" : "") + "Game data";
         }

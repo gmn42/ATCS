@@ -30,6 +30,10 @@ public class WorkspaceActions {
     ProjectTreeNode selectedNode = null;
     TreePath[] selectedPaths = null;
 
+    /**
+     * Get a sensible workspace parent location: either the parent of the current workspace, or the home directory (check if this works on windows)
+     * @return the directory to start the chooser at
+     */
     private File getWorkspaceChooserDirectory() {
         if (Workspace.activeWorkspace != null && Workspace.activeWorkspace.baseFolder != null) {
             File parent = Workspace.activeWorkspace.baseFolder.getParentFile();
@@ -40,6 +44,11 @@ public class WorkspaceActions {
         return home != null ? new File(home) : new File(".");
     }
 
+    /**
+     * Launch a new workspace process
+     * @param workspaceRoot the root of the workspace
+     * @param dialogTitle the title to use for an error message dialog if there is an error
+     */
     public void launchWorkspace(File workspaceRoot, String dialogTitle) {
         if (workspaceRoot == null) return;
 
@@ -55,6 +64,9 @@ public class WorkspaceActions {
         }
     }
 
+    /**
+     * Restart the current workspace.  Saves the UI state, starts the restart helper process, and shuts this one down.
+     */
     private void restartCurrentWorkspace() {
         try {
             persistUiStateIfPossible();
@@ -70,10 +82,17 @@ public class WorkspaceActions {
         }
     }
 
+    /**
+     * Determine if there's an active workspace, or if we haven't opened one yet.
+     * @return true if there's an active workspace
+     */
     private boolean hasActiveWorkspace() {
         return Workspace.activeWorkspace != null && Workspace.activeWorkspace.baseFolder != null;
     }
 
+    /**
+     * Create a new workspace
+     */
     public ATCSAction newWorkspace = new ATCSAction("New Workspace...", "Creates a new workspace and opens it") {
         public void actionPerformed(ActionEvent e) {
             JFileChooser chooser = new JFileChooser(getWorkspaceChooserDirectory());
@@ -158,61 +177,69 @@ public class WorkspaceActions {
 
     public ATCSAction createProject = new ATCSAction("Create Project...", "Opens the project creation wizard") {
         public void actionPerformed(ActionEvent e) {
-            new ProjectCreationWizard().setVisible(true);
+            if (workspaceBusy) return;
+            // We pass callbacks to set/reset the busy flag when the actual creation occurs, to lock out the tree
+            new ProjectCreationWizard(() -> setWorkspaceBusy(true), () -> setWorkspaceBusy(false)).setVisible(true);
         }
 
     };
 
 
+    // TODO: Fix the memory leak here - it doesn't seem to usually free much of anything
     public ATCSAction closeProject = new ATCSAction("Close Project", "Closes the project, unloading all resources from memory") {
         public void actionPerformed(ActionEvent e) {
+            if(workspaceBusy) return;
             if (!(selectedNode instanceof Project)) return;
             Workspace.closeProject((Project) selectedNode);
             selectedNode = null;
         }
 
         public void selectionChanged(ProjectTreeNode selectedNode, TreePath[] selectedPaths) {
-            setEnabled(selectedNode instanceof Project);
+            setEnabled(!workspaceBusy && selectedNode instanceof Project);
         }
 
     };
-
 
     public ATCSAction openProject = new ATCSAction("Open Project", "Opens the project, loading all necessary resources in memory") {
         public void actionPerformed(ActionEvent e) {
+            if (workspaceBusy) return;
             if (!(selectedNode instanceof ClosedProject)) return;
-            Workspace.openProject((ClosedProject) selectedNode);
+
+            setWorkspaceBusy(true);
+            Workspace.openProject((ClosedProject) selectedNode, () -> setWorkspaceBusy(false));
         }
 
         public void selectionChanged(ProjectTreeNode selectedNode, TreePath[] selectedPaths) {
-            setEnabled(selectedNode instanceof ClosedProject);
+            setEnabled(!workspaceBusy && selectedNode instanceof ClosedProject);
         }
 
     };
 
-    public ATCSAction deleteProject = new ATCSAction("Delete Project", "Deletes the project, and all created/altered data, from disk") {
+    public ATCSAction deleteProject = new ATCSAction("Delete Project", "Deletes the project from the workspace, optionally removing its folder from disk") {
         public void actionPerformed(ActionEvent e) {
+            if(workspaceBusy) return;
             if (selectedNode instanceof Project) {
-                if (ConfirmationDialogs.confirmProjectDelete()) {
-                    Workspace.deleteProject((Project) selectedNode);
+                Boolean deleteFolder = ConfirmationDialogs.confirmProjectDelete(((Project) selectedNode).name);
+                if (deleteFolder != null) {
+                    Workspace.deleteProject((Project) selectedNode, deleteFolder);
                 }
             } else if (selectedNode instanceof ClosedProject) {
-                if (ConfirmationDialogs.confirmProjectDelete()) {
-                    Workspace.deleteProject((ClosedProject) selectedNode);
+                Boolean deleteFolder = ConfirmationDialogs.confirmProjectDelete(((ClosedProject) selectedNode).name);
+                if (deleteFolder != null) {
+                    Workspace.deleteProject((ClosedProject) selectedNode, deleteFolder);
                 }
             }
         }
 
         public void selectionChanged(ProjectTreeNode selectedNode, TreePath[] selectedPaths) {
-            setEnabled(selectedNode instanceof Project || selectedNode instanceof ClosedProject);
+            setEnabled(!workspaceBusy && (selectedNode instanceof Project || selectedNode instanceof ClosedProject));
         }
 
     };
 
     public ATCSAction saveElement = new ATCSAction("Save this element", "Saves the current state of this element on disk") {
         public void actionPerformed(ActionEvent e) {
-            if (!(selectedNode instanceof GameDataElement)) return;
-            final GameDataElement node = ((GameDataElement) selectedNode);
+            if (!(selectedNode instanceof GameDataElement node)) return;
             if (node.needsSaving()) {
                 node.save();
                 ATContentStudio.frame.nodeChanged(node);
@@ -238,6 +265,7 @@ public class WorkspaceActions {
         }
 
         public void actionPerformed(ActionEvent e) {
+            // TODO: Overhaul this - check thread safety on BOTH branches (UI stuff should be on EDT only)
             if (multiMode) {
                 if (elementsToDelete == null) return;
 
@@ -254,9 +282,7 @@ public class WorkspaceActions {
                             @SuppressWarnings("unchecked")
                             GameDataCategory<JSONElement> category = (GameDataCategory<JSONElement>) element.getParent();
                             category.remove((JSONElement) element);
-                            if (impactedCategories.get(category) == null) {
-                                impactedCategories.put(category, new HashSet<File>());
-                            }
+                            impactedCategories.computeIfAbsent(category, k -> new HashSet<File>());
 
                             GameDataElement newOne = element.getProject().getGameDataElement(((JSONElement) element).getClass(), element.id);
                             if (element instanceof Quest) {
@@ -312,8 +338,7 @@ public class WorkspaceActions {
                     }
                 }.start();
             } else {
-                if (selectedNode == null || !(selectedNode instanceof GameDataElement)) return;
-                final GameDataElement node = ((GameDataElement) selectedNode);
+                if (selectedNode == null || !(selectedNode instanceof GameDataElement node)) return;
 
                 if (!ConfirmationDialogs.confirmDelete(node)) return;
 
@@ -559,7 +584,7 @@ public class WorkspaceActions {
         }
 
         public void selectionChanged(ProjectTreeNode selectedNode, TreePath[] selectedPaths) {
-            setEnabled(selectedNode != null && selectedNode instanceof Dialogue);
+            setEnabled(selectedNode instanceof Dialogue);
         }
     };
 
@@ -574,8 +599,23 @@ public class WorkspaceActions {
 
     };
 
-    List<ATCSAction> selectionAwareActions = new ArrayList<WorkspaceActions.ATCSAction>();
+    /**
+     * workspaceBusy routines -
 
+     * Whether the workspace is currently busy (generally, load operation in progress)
+     */
+    private volatile boolean workspaceBusy = false;
+
+    public void setWorkspaceBusy(boolean busy) {
+        workspaceBusy = busy;
+        if(SwingUtilities.isEventDispatchThread()) {
+            selectionChanged(selectedNode, selectedPaths);
+        } else {
+            SwingUtilities.invokeLater(() -> {
+                selectionChanged(selectedNode, selectedPaths);
+            });
+        }
+    }
 
     private void persistUiStateIfPossible() {
         if (ATContentStudio.frame != null) {
@@ -584,6 +624,8 @@ public class WorkspaceActions {
             Workspace.saveActive();
         }
     }
+
+    final List<ATCSAction> selectionAwareActions = new ArrayList<WorkspaceActions.ATCSAction>();
 
     public WorkspaceActions() {
         selectionAwareActions.add(closeProject);
@@ -599,7 +641,6 @@ public class WorkspaceActions {
         selectionAwareActions.add(compareNPCs);
         selectionAwareActions.add(exportProject);
         selectionAwareActions.add(createWriter);
-//		selectionAwareActions.add(testCommitWriter);
         selectionAwareActions.add(generateWriter);
         selectionChanged(null, null);
     }
@@ -642,6 +683,7 @@ public class WorkspaceActions {
             return values.get(key);
         }
 
+        private final List<PropertyChangeListener> listeners = new CopyOnWriteArrayList<PropertyChangeListener>();
         @Override
         public void putValue(String key, Object value) {
             PropertyChangeEvent event = new PropertyChangeEvent(this, key, values.get(key), value);
@@ -664,8 +706,6 @@ public class WorkspaceActions {
         public boolean isEnabled() {
             return enabled;
         }
-
-        private List<PropertyChangeListener> listeners = new CopyOnWriteArrayList<PropertyChangeListener>();
 
         @Override
         public void addPropertyChangeListener(PropertyChangeListener listener) {

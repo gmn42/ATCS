@@ -10,6 +10,7 @@ import com.jidesoft.swing.JideBoxLayout;
 
 import javax.swing.*;
 import java.awt.event.*;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 public class UiUtils {
@@ -56,7 +57,9 @@ public class UiUtils {
         moveUpBtn.setEnabled(false);
         moveDownBtn.setEnabled(false);
         list.addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) return;
             E selectedValue = list.getSelectedValue();
+            if (Objects.equals(selectedValue, getSelected.doIt())) return;
             valueChanged.doIt(selectedValue);
             setSelected.doIt(selectedValue);
             if (selectedValue == null) {

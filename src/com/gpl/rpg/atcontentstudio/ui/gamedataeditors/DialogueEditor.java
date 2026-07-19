@@ -33,12 +33,12 @@ public class DialogueEditor extends JSONElementEditor {
 
 
     private static final String[] replyTypes = new String[]{
-            "Phrase leads to another without replies.",
-            "NPC replies too.",
-            "Reply ends dialogue.",
-            "Engage fight with NPC.",
-            "Remove NPC from map.",
-            "Start trading with NPC."
+            "Phrase leads to another without replies",
+            "NPC replies too",
+            "Reply ends dialogue",
+            "Engage fight with NPC",
+            "Remove NPC from map",
+            "Start trading with NPC"
     };
     private static final int GO_NEXT_INDEX = 0;
     private static final int STD_REPLY_INDEX = 1;
@@ -216,7 +216,16 @@ public class DialogueEditor extends JSONElementEditor {
         }
 
         if (reward != null) {
-            rewardTypeCombo = addEnumValueBox(pane, "Reward type: ", Dialogue.Reward.RewardType.values(), reward.type, ((Dialogue) target).writable, listener);
+            // Use the modular described-enum combo so items are rendered by description and sorted alphabetically.
+            rewardTypeCombo = addEnumValueBoxWithDescriptions(
+                    pane,
+                    "Reward type: ",
+                    Dialogue.Reward.RewardType.values(),
+                    reward.type,
+                    ((Dialogue) target).writable,
+                    Dialogue.Reward.RewardType::getDescription,
+                    listener
+            );
             rewardsParamsPane = new JPanel();
             rewardsParamsPane.setLayout(new JideBoxLayout(rewardsParamsPane, JideBoxLayout.PAGE_AXIS));
             updateRewardsParamsEditorPane(rewardsParamsPane, reward, listener);
@@ -322,13 +331,16 @@ public class DialogueEditor extends JSONElementEditor {
                     if (!immunity) radioGroup.add(rewardConditionClear);
 
                     if (immunity) {
-                        rewardConditionTimed.setSelected(
-                                reward.reward_value == null || (!reward.reward_value.equals(ActorCondition.DURATION_FOREVER) && !reward.reward_value.equals(ActorCondition.MAGNITUDE_CLEAR)));
-                        rewardConditionForever.setSelected(reward.reward_value != null && !reward.reward_value.equals(ActorCondition.DURATION_FOREVER));
-                        rewardConditionClear.setSelected(reward.reward_value != null && !reward.reward_value.equals(ActorCondition.MAGNITUDE_CLEAR));
+                        // For immunity rewards we only offer Timed / Forever (no "clear" option),
+                        // so don't touch rewardConditionClear which is not created in this mode.
+                        boolean isTimed = reward.reward_value == null || (!reward.reward_value.equals(ActorCondition.DURATION_FOREVER) && !reward.reward_value.equals(ActorCondition.MAGNITUDE_CLEAR));
+                        boolean isForever = reward.reward_value != null && reward.reward_value.equals(ActorCondition.DURATION_FOREVER);
+                        rewardConditionTimed.setSelected(isTimed);
+                        rewardConditionForever.setSelected(isForever);
                     } else {
                         rewardConditionTimed.setSelected(reward.reward_value != null && !reward.reward_value.equals(ActorCondition.DURATION_FOREVER));
                         rewardConditionForever.setSelected(reward.reward_value == null || reward.reward_value.equals(ActorCondition.DURATION_FOREVER));
+                        if (rewardConditionClear != null) rewardConditionClear.setSelected(reward.reward_value != null && reward.reward_value.equals(ActorCondition.MAGNITUDE_CLEAR));
                     }
                     rewardValue.setEnabled(rewardConditionTimed.isSelected());
 
@@ -410,7 +422,7 @@ public class DialogueEditor extends JSONElementEditor {
                     }
                     rewardMap = null;
                     rewardObjId = null;// addTextField(pane, "Skill ID: ", reward.reward_obj_id, writable, listener);
-                    rewardObjIdCombo = addEnumValueBox(pane, "Skill ID: ", Requirement.SkillID.values(), skillId, writable, listener);
+                    rewardObjIdCombo = addEnumValueBoxWithDescriptions(pane, "Skill ID: ", Requirement.SkillID.values(), skillId, writable, Requirement.SkillID::getDescription, listener);
                     rewardObj = null;
                     rewardValue = null;
                     break;
@@ -450,12 +462,13 @@ public class DialogueEditor extends JSONElementEditor {
             removeElementListener(rewardRequirementObj);
         }
 
-        rewardRequirementTypeCombo = addEnumValueBox(
+        rewardRequirementTypeCombo = addEnumValueBoxWithDescriptions(
                 pane,
                 "Requirement type: ",
                 Requirement.RequirementType.values(),
                 requirement == null ? null : requirement.type,
                 writable,
+                Requirement.RequirementType::getDescription,
                 listener
         );
 
@@ -759,7 +772,7 @@ public class DialogueEditor extends JSONElementEditor {
             removeElementListener(requirementObj);
         }
 
-        requirementTypeCombo = addEnumValueBox(pane, "Requirement type: ", Requirement.RequirementType.values(), requirement == null ? null : requirement.type, writable, listener);
+        requirementTypeCombo = addEnumValueBoxWithDescriptions(pane, "Requirement type: ", Requirement.RequirementType.values(), requirement == null ? null : requirement.type, writable, Requirement.RequirementType::getDescription, listener);
         requirementParamsPane = new JPanel();
         requirementParamsPane.setLayout(new JideBoxLayout(requirementParamsPane, JideBoxLayout.PAGE_AXIS));
         updateRequirementParamsEditorPane(requirementParamsPane, requirement, listener);
@@ -821,7 +834,7 @@ public class DialogueEditor extends JSONElementEditor {
                     } catch (IllegalArgumentException e) {
                     }
                     requirementObj = null;
-                    requirementSkill = addEnumValueBox(pane, "Skill ID:", Requirement.SkillID.values(), skillId, writable, listener);
+                    requirementSkill = addEnumValueBoxWithDescriptions(pane, "Skill ID:", Requirement.SkillID.values(), skillId, writable, Requirement.SkillID::getDescription, listener);
                     requirementObjId = null;//addTextField(pane, "Skill ID:", requirement.required_obj_id, writable, listener);
                     requirementValue = addIntegerField(pane, "Level: ", requirement.required_value, false, writable, listener);
                     break;
@@ -867,7 +880,7 @@ public class DialogueEditor extends JSONElementEditor {
                     } catch (IllegalArgumentException e) {
                     }
                     requirementObj = null;
-                    requirementSkill = addEnumValueBox(pane, "Skill ID:", Requirement.SkillID.values(), skillId, writable, listener);
+                    requirementSkill = addEnumValueBoxWithDescriptions(pane, "Skill ID:", Requirement.SkillID.values(), skillId, writable, Requirement.SkillID::getDescription, listener);
                     requirementObjId = null;//addTextField(pane, "Skill ID:", requirement.required_obj_id, writable, listener);
                     requirementValue = addIntegerField(pane, "Level up: ", requirement.required_value, false, writable, listener);
                     break;
@@ -1216,7 +1229,11 @@ public class DialogueEditor extends JSONElementEditor {
                     return;
                 }
             } else if (source == messageField) {
-                dialogue.message = (String) value;
+                if(value == null || ((String) value).isEmpty()) {
+                    dialogue.message = null;
+                } else {
+                    dialogue.message = (String) value;
+                }
             } else if (source == switchToNpcBox) {
                 if (dialogue.switch_to_npc != null) {
                     dialogue.switch_to_npc.removeBacklink(dialogue);

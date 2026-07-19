@@ -3,8 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/ATContentStudio.iml" filepath="$PROJECT_DIR$/.idea/modules/ATContentStudio.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ATContentStudio.main.iml" filepath="$PROJECT_DIR$/.idea/modules/ATContentStudio.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ATContentStudio.test.iml" filepath="$PROJECT_DIR$/.idea/modules/ATContentStudio.test.iml" />
     </modules>
   </component>
 </project>
