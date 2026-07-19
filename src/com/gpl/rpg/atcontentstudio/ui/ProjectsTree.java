@@ -476,6 +476,8 @@ public class ProjectsTree extends JPanel {
             ATContentStudio.frame.openEditor((WriterModeData) node);
         } else if (node instanceof BookmarkEntry) {
             ATContentStudio.frame.openEditor(((BookmarkEntry) node).bookmarkedElement);
+        } else if (node instanceof ClosedProject) {
+            ATContentStudio.frame.actions.openProject.actionPerformed(null);
         }
     }
 
