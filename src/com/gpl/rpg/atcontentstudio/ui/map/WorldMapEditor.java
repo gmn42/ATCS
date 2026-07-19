@@ -21,6 +21,9 @@ import javax.swing.*;
 import javax.swing.event.*;
 import java.awt.*;
 import java.awt.event.*;
+import javax.swing.plaf.basic.BasicSliderUI;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -113,8 +116,6 @@ public class WorldMapEditor extends Editor implements FieldUpdateListener {
         pane.setLayout(new JideBoxLayout(pane, JideBoxLayout.PAGE_AXIS));
 
         addLabelField(pane, "Worldmap File: ", ((Worldmap) worldmap.getParent()).worldmapFile.getAbsolutePath());
-        pane.add(createButtonPane(worldmap), JideBoxLayout.FIX);
-
         mapView = new WorldMapView(worldmap);
         JScrollPane mapScroller = new JScrollPane(mapView);
         final JViewport vPort = mapScroller.getViewport();
@@ -122,11 +123,31 @@ public class WorldMapEditor extends Editor implements FieldUpdateListener {
         final JSlider zoomSlider = new JSlider(WorldMapView.MIN_ZOOM, WorldMapView.MAX_ZOOM, (int) (mapView.zoomLevel / WorldMapView.ZOOM_RATIO));
         zoomSlider.setSnapToTicks(true);
         zoomSlider.setMinorTickSpacing(WorldMapView.INC_ZOOM);
-        zoomSlider.setOrientation(JSlider.VERTICAL);
+        zoomSlider.setPaintTicks(false);
+        zoomSlider.setPaintLabels(false);
+        zoomSlider.setLabelTable(null);
+        // Override the UI because GTK+ prints the position and takes a lot of space
+        zoomSlider.setUI(new BasicSliderUI(zoomSlider) {
+            @Override
+            public void paintTicks(Graphics g) {
+            }
+
+            @Override
+            public void paintLabels(Graphics g) {
+            }
+        });
+        zoomSlider.setOrientation(JSlider.HORIZONTAL);
+        final JLabel zoomValueLabel = new JLabel(String.format(java.util.Locale.ROOT, "%.2fx", mapView.zoomLevel));
         JPanel zoomSliderPane = new JPanel();
-        zoomSliderPane.setLayout(new JideBoxLayout(zoomSliderPane, JideBoxLayout.PAGE_AXIS));
+        zoomSliderPane.setLayout(new JideBoxLayout(zoomSliderPane, JideBoxLayout.LINE_AXIS, 6));
         zoomSliderPane.add(zoomSlider, JideBoxLayout.VARY);
+        zoomSliderPane.add(zoomValueLabel, JideBoxLayout.FIX);
         zoomSliderPane.add(new JLabel(new ImageIcon(DefaultIcons.getZoomIcon())), JideBoxLayout.FIX);
+
+        JPanel headerPane = new JPanel(new BorderLayout(6, 0));
+        headerPane.add(createButtonPane(worldmap), BorderLayout.CENTER);
+        headerPane.add(zoomSliderPane, BorderLayout.EAST);
+        pane.add(headerPane, JideBoxLayout.FIX);
 
 
         if (target.writable) {
@@ -237,7 +258,6 @@ public class WorldMapEditor extends Editor implements FieldUpdateListener {
 
         JPanel mapZoomPane = new JPanel();
         mapZoomPane.setLayout(new BorderLayout());
-        mapZoomPane.add(zoomSliderPane, BorderLayout.WEST);
         mapZoomPane.add(mapScroller, BorderLayout.CENTER);
 
         JPanel mapPropsPane = new JPanel();
@@ -245,36 +265,82 @@ public class WorldMapEditor extends Editor implements FieldUpdateListener {
 
         setCurrentSelectionModel(msmListModel, msmListSelectionModel);
 
+        final ChangeListener zoomChangeListener = e -> {
+            Rectangle view = vPort.getViewRect();
+
+            float oldZoomLevel = mapView.zoomLevel;
+            mapView.zoomLevel = zoomSlider.getValue() * WorldMapView.ZOOM_RATIO;
+            zoomValueLabel.setText(String.format(java.util.Locale.ROOT, "%.2fx", mapView.zoomLevel));
+
+            int newCenterX = (int) (view.getCenterX() / oldZoomLevel * mapView.zoomLevel);
+            int newCenterY = (int) (view.getCenterY() / oldZoomLevel * mapView.zoomLevel);
+
+            view.x = newCenterX - (view.width / 2);
+            view.y = newCenterY - (view.height / 2);
+
+            mapView.scrollRectToVisible(view);
+            mapView.revalidate();
+            mapView.repaint();
+        };
+
+        zoomSlider.addChangeListener(zoomChangeListener);
+        mapScroller.setWheelScrollingEnabled(false);
+        mapView.addMouseWheelListener(e -> {
+            Point mouse = e.getPoint();
+            Rectangle view = vPort.getViewRect();
+            int anchorX = view.x + mouse.x;
+            int anchorY = view.y + mouse.y;
+
+            int newZoom = zoomSlider.getValue() - (e.getWheelRotation() * WorldMapView.INC_ZOOM);
+            newZoom = Math.max(zoomSlider.getMinimum(), Math.min(WorldMapView.MAX_ZOOM, newZoom));
+            if (newZoom != zoomSlider.getValue()) {
+                float oldZoomLevel = mapView.zoomLevel;
+                float nextZoomLevel = newZoom * WorldMapView.ZOOM_RATIO;
+                int newViewX = Math.round(anchorX * nextZoomLevel / oldZoomLevel - mouse.x);
+                int newViewY = Math.round(anchorY * nextZoomLevel / oldZoomLevel - mouse.y);
+                zoomSlider.setValue(newZoom);
+                view.setLocation(newViewX, newViewY);
+                mapView.scrollRectToVisible(view);
+            }
+            e.consume();
+        });
 
         final JSplitPane mapAndPropsSplitter = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, mapZoomPane, mapPropsPane);
-        SwingUtilities.invokeLater(new Runnable() {
+        SwingUtilities.invokeLater(() -> mapAndPropsSplitter.setDividerLocation(0.8d));
+
+        // Add listener to fit the map to the viewport when the divider is in its final initial location
+        mapAndPropsSplitter.addPropertyChangeListener(JSplitPane.DIVIDER_LOCATION_PROPERTY, new PropertyChangeListener() {
+            private boolean fitted = false;
+            private int lastDividerLocation = Integer.MIN_VALUE;
+
             @Override
-            public void run() {
-                mapAndPropsSplitter.setDividerLocation(0.8d);
+            public void propertyChange(PropertyChangeEvent evt) {
+                if (fitted) {
+                    return;
+                }
+
+                lastDividerLocation = mapAndPropsSplitter.getDividerLocation();
+                SwingUtilities.invokeLater(() -> SwingUtilities.invokeLater(() -> {
+                    if (fitted || mapAndPropsSplitter.getDividerLocation() != lastDividerLocation) {
+                        return;
+                    }
+
+                    Dimension extent = mapScroller.getViewport().getExtentSize();
+                    if (extent.width <= 0 || extent.height <= 0 || mapView.sizeX <= 0 || mapView.sizeY <= 0) {
+                        return;
+                    }
+
+                    float zoom = Math.min(extent.width / (float) mapView.sizeX, extent.height / (float) mapView.sizeY);
+                    zoom = Math.clamp(zoom, WorldMapView.MIN_ZOOM * WorldMapView.ZOOM_RATIO, WorldMapView.MAX_ZOOM * WorldMapView.ZOOM_RATIO);
+
+                    fitted = true;
+                    int fittedZoom = Math.clamp((int) Math.floor(zoom / WorldMapView.ZOOM_RATIO), WorldMapView.MIN_ZOOM, WorldMapView.MAX_ZOOM);
+                    zoomSlider.setMinimum(fittedZoom);
+                    zoomSlider.setValue(fittedZoom);
+                }));
             }
         });
         pane.add(mapAndPropsSplitter, JideBoxLayout.VARY);
-
-        zoomSlider.addChangeListener(new ChangeListener() {
-            @Override
-            public void stateChanged(ChangeEvent e) {
-
-                Rectangle view = vPort.getViewRect();
-
-                float oldZoomLevel = mapView.zoomLevel;
-                mapView.zoomLevel = zoomSlider.getValue() * WorldMapView.ZOOM_RATIO;
-
-                int newCenterX = (int) (view.getCenterX() / oldZoomLevel * mapView.zoomLevel);
-                int newCenterY = (int) (view.getCenterY() / oldZoomLevel * mapView.zoomLevel);
-
-                view.x = newCenterX - (view.width / 2);
-                view.y = newCenterY - (view.height / 2);
-
-                mapView.scrollRectToVisible(view);
-                mapView.revalidate();
-                mapView.repaint();
-            }
-        });
 
         MouseAdapter mouseListener = new MouseAdapter() {
             final int skipRecomputeDefault = 5;
