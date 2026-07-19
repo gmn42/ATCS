@@ -109,6 +109,40 @@ public class WorldMapEditor extends Editor implements FieldUpdateListener {
         editorPane.setText(text);
     }
 
+    private void applyZoom(JViewport viewport, JLabel zoomValueLabel, int newZoom, Point anchorPoint) {
+        Point viewPosition = viewport.getViewPosition();
+        float oldZoomLevel = mapView.zoomLevel;
+        mapView.zoomLevel = newZoom * WorldMapView.ZOOM_RATIO;
+        zoomValueLabel.setText(String.format(java.util.Locale.ROOT, "%.2fx", mapView.zoomLevel));
+
+        // Use the anchor point to keep the same point in the map under the mouse cursor after zooming
+        if (anchorPoint != null) {
+            int anchorXInMap = viewPosition.x + anchorPoint.x;
+            int anchorYInMap = viewPosition.y + anchorPoint.y;
+            if (anchorXInMap >= 0 && anchorYInMap >= 0 && anchorXInMap < mapView.getWidth() && anchorYInMap < mapView.getHeight()) {
+                double anchorMapX = anchorXInMap / oldZoomLevel;
+                double anchorMapY = anchorYInMap / oldZoomLevel;
+                viewPosition.x = (int) Math.round(anchorMapX * mapView.zoomLevel - anchorPoint.x);
+                viewPosition.y = (int) Math.round(anchorMapY * mapView.zoomLevel - anchorPoint.y);
+            } else {
+                anchorPoint = null;
+            }
+        }
+
+        // If zooming from a point outside the map, center the view on the map instead
+        if (anchorPoint == null) {
+            Rectangle view = viewport.getViewRect();
+            int newCenterX = Math.round((float) view.getCenterX() / oldZoomLevel * mapView.zoomLevel);
+            int newCenterY = Math.round((float) view.getCenterY() / oldZoomLevel * mapView.zoomLevel);
+            viewPosition.x = newCenterX - (view.width / 2);
+            viewPosition.y = newCenterY - (view.height / 2);
+        }
+
+        viewport.setViewPosition(viewPosition);
+        mapView.revalidate();
+        mapView.repaint();
+    }
+
 
     @SuppressWarnings("unchecked")
     private JPanel buildSegmentTab(final WorldmapSegment worldmap) {
@@ -266,41 +300,16 @@ public class WorldMapEditor extends Editor implements FieldUpdateListener {
         setCurrentSelectionModel(msmListModel, msmListSelectionModel);
 
         final ChangeListener zoomChangeListener = e -> {
-            Rectangle view = vPort.getViewRect();
-
-            float oldZoomLevel = mapView.zoomLevel;
-            mapView.zoomLevel = zoomSlider.getValue() * WorldMapView.ZOOM_RATIO;
-            zoomValueLabel.setText(String.format(java.util.Locale.ROOT, "%.2fx", mapView.zoomLevel));
-
-            int newCenterX = (int) (view.getCenterX() / oldZoomLevel * mapView.zoomLevel);
-            int newCenterY = (int) (view.getCenterY() / oldZoomLevel * mapView.zoomLevel);
-
-            view.x = newCenterX - (view.width / 2);
-            view.y = newCenterY - (view.height / 2);
-
-            mapView.scrollRectToVisible(view);
-            mapView.revalidate();
-            mapView.repaint();
+           applyZoom(vPort, zoomValueLabel, zoomSlider.getValue(), vPort.getMousePosition());
         };
 
         zoomSlider.addChangeListener(zoomChangeListener);
         mapScroller.setWheelScrollingEnabled(false);
-        mapView.addMouseWheelListener(e -> {
-            Point mouse = e.getPoint();
-            Rectangle view = vPort.getViewRect();
-            int anchorX = view.x + mouse.x;
-            int anchorY = view.y + mouse.y;
-
+        vPort.addMouseWheelListener(e -> {
             int newZoom = zoomSlider.getValue() - (e.getWheelRotation() * WorldMapView.INC_ZOOM);
-            newZoom = Math.max(zoomSlider.getMinimum(), Math.min(WorldMapView.MAX_ZOOM, newZoom));
+            newZoom = Math.clamp(newZoom, zoomSlider.getMinimum(), WorldMapView.MAX_ZOOM);
             if (newZoom != zoomSlider.getValue()) {
-                float oldZoomLevel = mapView.zoomLevel;
-                float nextZoomLevel = newZoom * WorldMapView.ZOOM_RATIO;
-                int newViewX = Math.round(anchorX * nextZoomLevel / oldZoomLevel - mouse.x);
-                int newViewY = Math.round(anchorY * nextZoomLevel / oldZoomLevel - mouse.y);
                 zoomSlider.setValue(newZoom);
-                view.setLocation(newViewX, newViewY);
-                mapView.scrollRectToVisible(view);
             }
             e.consume();
         });
