@@ -351,51 +351,45 @@ public class WorkspaceActions {
                     @Override
                     public void run() {
                         node.childrenRemoved(new ArrayList<ProjectTreeNode>());
-                        switch (node) {
-                            case JSONElement jsonElement -> {
-                                if (node.getParent() instanceof GameDataCategory<?>) {
-                                    ((GameDataCategory<?>) node.getParent()).removeGeneric(jsonElement);
-                                    List<SaveEvent> events = node.attemptSave();
-                                    if (events == null || events.isEmpty()) {
-                                        node.save();
-                                    } else {
-                                        SwingUtilities.invokeLater(() -> new SaveItemsWizard(events, null).setVisible(true));
-                                    }
-                                    GameDataElement newOne = node.getProject().getGameDataElement(jsonElement.getClass(), node.id);
-                                    if (node instanceof Quest) {
-                                        for (QuestStage oldStage : ((Quest) node).stages) {
-                                            QuestStage newStage = newOne != null ? ((Quest) newOne).getStage(oldStage.progress) : null;
-                                            for (GameDataElement backlink : oldStage.getBacklinks()) {
-                                                backlink.elementChanged(oldStage, newStage);
-                                            }
+                        // Don't change to pattern-based switch as long as we need Java 17 support
+                        if (node instanceof JSONElement) {
+                            if (node.getParent() instanceof GameDataCategory<?>) {
+                                ((GameDataCategory<?>) node.getParent()).removeGeneric((JSONElement) node);
+                                List<SaveEvent> events = node.attemptSave();
+                                if (events == null || events.isEmpty()) {
+                                    node.save();
+                                } else {
+                                    SwingUtilities.invokeLater(() -> new SaveItemsWizard(events, null).setVisible(true));
+                                }
+                                GameDataElement newOne = node.getProject().getGameDataElement(((JSONElement) node).getClass(), node.id);
+                                if (node instanceof Quest) {
+                                    for (QuestStage oldStage : ((Quest) node).stages) {
+                                        QuestStage newStage = newOne != null ? ((Quest) newOne).getStage(oldStage.progress) : null;
+                                        for (GameDataElement backlink : oldStage.getBacklinks()) {
+                                            backlink.elementChanged(oldStage, newStage);
                                         }
                                     }
-                                    for (GameDataElement backlink : node.getBacklinks()) {
-                                        backlink.elementChanged(node, newOne);
-                                    }
                                 }
-                            }
-                            case TMXMap tmxMap -> {
-                                tmxMap.delete();
-                                GameDataElement newOne = node.getProject().getMap(node.id);
                                 for (GameDataElement backlink : node.getBacklinks()) {
                                     backlink.elementChanged(node, newOne);
                                 }
                             }
-                            case WriterModeData writerModeData -> {
-                                WriterModeDataSet parent = (WriterModeDataSet) node.getParent();
-                                parent.writerModeDataList.remove(node);
+                        } else if (node instanceof TMXMap) {
+                            ((TMXMap) node).delete();
+                            GameDataElement newOne = node.getProject().getMap(node.id);
+                            for (GameDataElement backlink : node.getBacklinks()) {
+                                backlink.elementChanged(node, newOne);
                             }
-                            case WorldmapSegment worldmapSegment -> {
-                                if (node.getParent() instanceof Worldmap) {
-                                    ((Worldmap) node.getParent()).remove(node);
-                                    node.save();
-                                    for (GameDataElement backlink : node.getBacklinks()) {
-                                        backlink.elementChanged(node, node.getProject().getWorldmapSegment(node.id));
-                                    }
+                        } else if (node instanceof WriterModeData) {
+                            WriterModeDataSet parent = (WriterModeDataSet) node.getParent();
+                            parent.writerModeDataList.remove(node);
+                        } else if (node instanceof WorldmapSegment) {
+                            if (node.getParent() instanceof Worldmap) {
+                                ((Worldmap) node.getParent()).remove(node);
+                                node.save();
+                                for (GameDataElement backlink : node.getBacklinks()) {
+                                    backlink.elementChanged(node, node.getProject().getWorldmapSegment(node.id));
                                 }
-                            }
-                            default -> {
                             }
                         }
                     }

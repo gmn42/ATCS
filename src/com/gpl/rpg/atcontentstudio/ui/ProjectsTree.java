@@ -631,7 +631,7 @@ public class ProjectsTree extends JPanel {
             }
 
             for (TreeModelListener l : listeners) {
-                l.treeNodesInserted(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath(),
+                l.treeNodesInserted(new TreeModelEvent(this, node.getParentPath(),
                                                        new int[]{sortedIndex},
                                                        new Object[]{node.getLastPathComponent()}));
             }
@@ -673,17 +673,17 @@ public class ProjectsTree extends JPanel {
             // If position changed, fire removed + inserted; otherwise fire changed
             if (oldIndex >= 0 && oldIndex != newIndex) {
                 for (TreeModelListener l : listeners) {
-                    l.treeNodesRemoved(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath(),
+                    l.treeNodesRemoved(new TreeModelEvent(this, node.getParentPath(),
                                                           new int[]{oldIndex},
                                                           new Object[]{node.getLastPathComponent()}));
-                    l.treeNodesInserted(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath(),
+                    l.treeNodesInserted(new TreeModelEvent(this, node.getParentPath(),
                                                            new int[]{newIndex},
                                                            new Object[]{node.getLastPathComponent()}));
                 }
             } else {
                 int idx = newIndex >= 0 ? newIndex : (oldIndex >= 0 ? oldIndex : parent.getIndex((TreeNode) child));
                 for (TreeModelListener l : listeners) {
-                    l.treeNodesChanged(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath(),
+                    l.treeNodesChanged(new TreeModelEvent(this, node.getParentPath(),
                                                           new int[]{idx},
                                                           new Object[]{node.getLastPathComponent()}));
                 }
@@ -718,13 +718,13 @@ public class ProjectsTree extends JPanel {
                 Profiling.printf("WARNING: Failed to remove tree node from sorted cache; refreshing subtree instead. parent=%s, child=%s",
                                      parent, child);
                 for (TreeModelListener l : listeners) {
-                    l.treeStructureChanged(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath()));
+                    l.treeStructureChanged(new TreeModelEvent(this, node.getParentPath()));
                 }
                 return;
             }
 
             for (TreeModelListener l : listeners) {
-                l.treeNodesRemoved(new TreeModelEvent(node.getLastPathComponent(), node.getParentPath(),
+                l.treeNodesRemoved(new TreeModelEvent(this, node.getParentPath(),
                                                       new int[]{sortedIndex},
                                                       new Object[]{node.getLastPathComponent()}));
             }

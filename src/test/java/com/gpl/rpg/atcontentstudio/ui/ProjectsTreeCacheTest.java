@@ -28,7 +28,7 @@ public class ProjectsTreeCacheTest {
     @Test
     public void cachesSortedChildrenAndPreservesDuplicateDescriptions() throws Exception {
         ProjectsTree.ProjectsTreeModel model = createModel();
-        RecordingListener listener = new RecordingListener();
+        RecordingListener listener = new RecordingListener(model);
         model.addTreeModelListener(listener);
 
         DummyNode root = new DummyNode("root", null);
@@ -89,7 +89,7 @@ public class ProjectsTreeCacheTest {
      */
     public void refreshingWorkspaceRootInvalidatesCachedChildren() throws Exception {
         ProjectsTree.ProjectsTreeModel model = createModel();
-        RecordingListener listener = new RecordingListener();
+        RecordingListener listener = new RecordingListener(model);
         model.addTreeModelListener(listener);
 
         Workspace workspace = Workspace.activeWorkspace;
@@ -132,28 +132,37 @@ public class ProjectsTreeCacheTest {
     }
 
     private static class RecordingListener implements TreeModelListener {
+        private final Object expectedSource;
         private final List<Integer> insertedIndexes = new ArrayList<Integer>();
         private final List<Integer> removedIndexes = new ArrayList<Integer>();
         private final List<Integer> changedIndexes = new ArrayList<Integer>();
         private int structureChangedCount = 0;
 
+        RecordingListener(Object expectedSource) {
+            this.expectedSource = expectedSource;
+        }
+
         @Override
         public void treeNodesChanged(TreeModelEvent e) {
+            assertSame(expectedSource, e.getSource());
             changedIndexes.add(firstIndex(e));
         }
 
         @Override
         public void treeNodesInserted(TreeModelEvent e) {
+            assertSame(expectedSource, e.getSource());
             insertedIndexes.add(firstIndex(e));
         }
 
         @Override
         public void treeNodesRemoved(TreeModelEvent e) {
+            assertSame(expectedSource, e.getSource());
             removedIndexes.add(firstIndex(e));
         }
 
         @Override
         public void treeStructureChanged(TreeModelEvent e) {
+            assertSame(expectedSource, e.getSource());
             structureChangedCount++;
         }
 

@@ -1229,7 +1229,7 @@ public class DialogueEditor extends JSONElementEditor {
                     return;
                 }
             } else if (source == messageField) {
-                if(((String) value).isEmpty()) {
+                if(value == null || ((String) value).isEmpty()) {
                     dialogue.message = null;
                 } else {
                     dialogue.message = (String) value;
