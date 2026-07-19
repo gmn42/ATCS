@@ -15,7 +15,8 @@ public class MapColorFilters {
      * custom pixel operation.
      *
      * @param colorFilter the filter to convert
-     * @return the color matrix, or {@code null} if the filter is not supported
+     * @return the color matrix, identity for {@link TMXMap.ColorFilter#none}, or
+     * {@code null} if the filter is not supported
      */
     public static float[] buildMatrixForFilter(com.gpl.rpg.atcontentstudio.model.maps.TMXMap.ColorFilter colorFilter) {
         float[] m;
@@ -112,11 +113,15 @@ public class MapColorFilters {
      * This reuses the same matrix definitions as the live-graphics path, but it
      * mutates the {@link BufferedImage} pixels directly so callers can safely use it
      * when the on-screen rendering pipeline does not support custom composites.
+     * A {@code null} or {@link TMXMap.ColorFilter#none} filter is treated as a no-op.
      *
      * @param colorFilter the filter to apply
      * @param image the image to modify in place
      */
     public static void applyColorFilter(TMXMap.ColorFilter colorFilter, BufferedImage image) {
+        if (colorFilter == null || colorFilter == TMXMap.ColorFilter.none) {
+            return;
+        }
         float[] matrix = buildMatrixForFilter(colorFilter);
         if (matrix != null) {
             applyMatrixToImage(matrix, image);
